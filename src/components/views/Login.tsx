@@ -4,7 +4,7 @@
  */
 
 import React from 'react';
-import { User, KeyRound, ShieldAlert, CheckCircle, ArrowRight } from 'lucide-react';
+import { User, KeyRound, ShieldAlert, CheckCircle, ArrowRight, Eye, EyeOff } from 'lucide-react';
 import { Role } from '../../types';
 import { supabase, getUserRoleFromSupabase } from '../../lib/supabase';
 import { getOrCreatePatientWallet } from '../../data/walletUtils';
@@ -28,6 +28,7 @@ export default function Login({ setView, setUserRole, setUserEmail }: LoginProps
   const [resetEmail, setResetEmail] = React.useState('');
   const [resetSuccessMsg, setResetSuccessMsg] = React.useState('');
   const [isResetSending, setIsResetSending] = React.useState(false);
+  const [showPassword, setShowPassword] = React.useState(false);
 
   React.useEffect(() => {
     // Seed testing accounts requested by user
@@ -773,14 +774,22 @@ export default function Login({ setView, setUserRole, setUserEmail }: LoginProps
               <div className="relative flex items-center">
                 <KeyRound className="absolute left-3 text-gray-400 w-4 h-4" />
                 <input 
-                  type="password" 
+                  type={showPassword ? "text" : "password"} 
                   placeholder="••••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   disabled={isSubmitting}
                   required
-                  className="w-full bg-[#F0F7F7] border border-[#D1E5E5] p-2.5 pl-9 rounded-lg text-xs font-semibold outline-none text-[#1A2B3C] focus:border-[#0A6E6E] focus:ring-1 focus:ring-[#0A6E6E]/20"
+                  className="w-full bg-[#F0F7F7] border border-[#D1E5E5] p-2.5 pl-9 pr-10 rounded-lg text-xs font-semibold outline-none text-[#1A2B3C] focus:border-[#0A6E6E] focus:ring-1 focus:ring-[#0A6E6E]/20"
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 text-gray-400 hover:text-[#0A6E6E] transition-colors focus:outline-none"
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                >
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
               </div>
             </div>
 
