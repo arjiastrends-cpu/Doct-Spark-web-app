@@ -1,0 +1,6 @@
+{
+  "name": "Doct Spark",
+  "description": "A comprehensive healthcare platform connecting patients, doctors, and clinics in India.",
+  "requestFramePermissions": ["geolocation"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
