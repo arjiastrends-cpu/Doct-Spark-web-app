@@ -29,12 +29,19 @@ import {
   Sliders,
   Settings
 } from 'lucide-react';
-import { Physiotherapy } from '../../types';
+import { Physiotherapy, Role } from '../../types';
 import { generateCommission } from '../../data/commissionUtils';
+import DashboardLayout from '../layout/DashboardLayout';
 
 interface PhysiotherapyDashboardProps {
   setView: (view: string) => void;
   userEmail: string | null;
+  currentView: string;
+  userRole: Role | null;
+  setUserRole: (role: Role | null) => void;
+  setUserEmail: (email: string | null) => void;
+  notificationsCount: number;
+  onOpenNotifications: () => void;
 }
 
 interface ServiceItem {
@@ -59,7 +66,16 @@ interface PhysioAppointment {
   sessionNotes?: string;
 }
 
-export default function PhysiotherapyDashboard({ setView, userEmail }: PhysiotherapyDashboardProps) {
+export default function PhysiotherapyDashboard({
+  setView,
+  userEmail,
+  currentView,
+  userRole,
+  setUserRole,
+  setUserEmail,
+  notificationsCount,
+  onOpenNotifications
+}: PhysiotherapyDashboardProps) {
   const emailKey = userEmail ? userEmail.trim().toLowerCase() : '';
 
   // 1. Profile state
@@ -421,143 +437,148 @@ export default function PhysiotherapyDashboard({ setView, userEmail }: Physiothe
     .filter(apt => apt.status === 'Completed' && apt.type === 'Clinic Visit')
     .reduce((sum, apt) => sum + apt.fee, 0);
 
-  return (
-    <div className="flex-grow max-w-7xl w-full mx-auto px-4 md:px-8 py-8" id="physiotherapist-dashboard-container">
-      {/* Title Header Block */}
-      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center bg-white border border-[#D1E5E5] rounded-3xl p-6 mb-8 shadow-3xs relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-48 h-48 rounded-full bg-slate-50/60 -mr-16 -mt-16 -z-10"></div>
-        <div>
-          <div className="flex items-center gap-2 mb-2 flex-wrap">
-            <span className="text-[10px] bg-teal-50 text-teal-700 font-extrabold px-3 py-1 rounded-full uppercase tracking-wider border border-teal-200 flex items-center gap-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-              ♿ Verified Physiotherapist
-            </span>
-            <span className="text-[10px] bg-indigo-50 text-indigo-700 font-extrabold px-3 py-1 rounded-full uppercase tracking-wider border border-indigo-200">
-              IAP Registered
+  const renderSidebarContent = () => {
+    return (
+      <div className="space-y-3">
+        <div className="flex items-center gap-3 border-b border-gray-100 pb-4 mb-4">
+          <div className="w-10 h-10 bg-[#0A6E6E]/10 text-[#0A6E6E] rounded-full flex items-center justify-center text-lg font-black border border-[#0A6E6E]/20">
+            ♿
+          </div>
+          <div className="overflow-hidden">
+            <h3 className="font-extrabold text-sm text-[#1A2B3C] truncate leading-tight">{profile?.name || 'Rehab Physiotherapy'}</h3>
+            <p className="text-[10px] text-gray-400 font-medium truncate mt-0.5">Lic: IAP Registered</p>
+            <span className="inline-block mt-1 text-[8px] bg-emerald-50 text-emerald-700 font-black px-1.5 py-0.5 rounded border border-emerald-200">
+              Approved / Verified
             </span>
           </div>
-          <h1 className="text-2xl md:text-3xl font-black text-[#1A2B3C] font-heading tracking-tight">
-            {profile?.name || 'Rehab Physiotherapy Center'}
-          </h1>
-          <p className="text-xs text-gray-500 max-w-2xl leading-relaxed mt-1">
-            Therapist: <strong>{profile?.therapistName || 'Dr. Neha (PT)'}</strong> | specialty: {profile?.specialty} | Experience: {profile?.experience || 8} yrs
+        </div>
+
+        <div className="space-y-1">
+          <button
+            onClick={() => setActiveTab('overview')}
+            className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold transition-all text-left ${
+              activeTab === 'overview' ? 'bg-[#0A6E6E] text-white shadow-xs' : 'text-slate-600 hover:bg-slate-50'
+            }`}
+          >
+            <LayoutDashboard className="w-4 h-4" />
+            <span>Overview Analytics</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('appointments')}
+            className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-bold transition-all text-left ${
+              activeTab === 'appointments' ? 'bg-[#0A6E6E] text-white shadow-xs' : 'text-slate-600 hover:bg-slate-50'
+            }`}
+          >
+            <div className="flex items-center gap-2.5">
+              <Calendar className="w-4 h-4" />
+              <span>Appointments & Visits</span>
+            </div>
+            {appointments.filter(a => a.status === 'Pending').length > 0 && (
+              <span className="text-[9px] px-2 py-0.5 rounded-full bg-amber-500 text-white font-bold">
+                {appointments.filter(a => a.status === 'Pending').length}
+              </span>
+            )}
+          </button>
+
+          <button
+            onClick={() => setActiveTab('services')}
+            className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold transition-all text-left ${
+              activeTab === 'services' ? 'bg-[#0A6E6E] text-white shadow-xs' : 'text-slate-600 hover:bg-slate-50'
+            }`}
+          >
+            <Activity className="w-4 h-4" />
+            <span>Service List Catalog</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('wallet')}
+            className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold transition-all text-left ${
+              activeTab === 'wallet' ? 'bg-[#0A6E6E] text-white shadow-xs' : 'text-slate-600 hover:bg-slate-50'
+            }`}
+          >
+            <Wallet className="w-4 h-4" />
+            <span>Wallet & Settlements</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('profile')}
+            className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold transition-all text-left ${
+              activeTab === 'profile' ? 'bg-[#0A6E6E] text-white shadow-xs' : 'text-slate-600 hover:bg-slate-50'
+            }`}
+          >
+            <User className="w-4 h-4" />
+            <span>Practice Profile</span>
+          </button>
+        </div>
+
+        <div className="bg-[#FAFBFD] border border-gray-100 rounded-2xl p-4 text-[11px] font-sans">
+          <h4 className="font-extrabold text-[#1A2B3C] uppercase tracking-wider mb-1 text-[9px]">Territorial Alignment</h4>
+          <p className="text-gray-400 font-medium leading-relaxed">
+            Onboarded under <strong>{profile?.onboardedByType || 'District'} Partner</strong>. Platform fees of 5% on bookings automatically help grow territory-specific digital networks.
           </p>
         </div>
 
-        <div className="mt-5 lg:mt-0 flex gap-2 flex-wrap shrink-0">
-          <button 
-            onClick={() => setView('home')}
-            className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-gray-700 text-xs font-bold rounded-xl cursor-pointer transition-all border border-gray-200"
+        <div className="pt-4 border-t border-gray-100 font-sans">
+          <button
+            onClick={() => {
+              setUserRole(null);
+              setUserEmail(null);
+              setView('login');
+            }}
+            className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-rose-600 hover:bg-rose-50 cursor-pointer text-left"
           >
-            Homepage
-          </button>
-          <button 
-            onClick={() => setView('partner-login')}
-            className="px-4 py-2 bg-red-50 hover:bg-red-100 text-red-600 text-xs font-bold rounded-xl cursor-pointer transition-all border border-red-200/50"
-          >
-            Logout
+            <Settings className="w-4 h-4 text-rose-500" /> Disconnect Session
           </button>
         </div>
       </div>
+    );
+  };
 
-      {/* Simulated Push Message gateway */}
-      {notifications.some(n => !n.read) && (
-        <div className="bg-slate-950 text-teal-400 font-mono rounded-2xl p-4 text-[10px] mb-8 space-y-1 shadow-md border border-slate-800">
-          <div className="font-extrabold uppercase text-gray-400 border-b border-gray-800 pb-1.5 mb-2 flex justify-between items-center font-sans">
-            <span className="flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-red-500 animate-ping"></span>
-              Live Physiotherapist Alert Notifications Gateway
-            </span>
-            <button 
-              onClick={() => setNotifications(notifications.map(n => ({ ...n, read: true })))} 
-              className="text-teal-400 hover:underline text-[9px] font-bold"
-            >
-              Mark all read
-            </button>
-          </div>
-          {notifications.filter(n => !n.read).map(n => (
-            <div key={n.id} className="leading-relaxed opacity-95">
-              <span className="text-amber-400">[{n.title}]</span> {n.message} <span className="text-gray-500">({n.time})</span>
+  return (
+    <DashboardLayout
+      currentView={currentView}
+      setView={setView}
+      userRole={userRole}
+      setUserRole={setUserRole}
+      userEmail={userEmail}
+      setUserEmail={setUserEmail}
+      notificationsCount={notificationsCount}
+      onOpenNotifications={onOpenNotifications}
+      sidebar={renderSidebarContent()}
+      activeTabTitle={
+        activeTab === 'overview' ? '📊 Overview Analytics' :
+        activeTab === 'appointments' ? '📋 Appointments & Visits' :
+        activeTab === 'services' ? '💪 Service List Catalog' :
+        activeTab === 'wallet' ? '💰 Wallet & Settlements' : '⚙️ Practice Profile'
+      }
+    >
+      <div className="space-y-6">
+        {/* Simulated Push Message gateway */}
+        {notifications.some(n => !n.read) && (
+          <div className="bg-slate-950 text-teal-400 font-mono rounded-2xl p-4 text-[10px] space-y-1 shadow-md border border-slate-800">
+            <div className="font-extrabold uppercase text-gray-400 border-b border-gray-800 pb-1.5 mb-2 flex justify-between items-center font-sans">
+              <span className="flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-red-500 animate-ping"></span>
+                Live Physiotherapist Alert Notifications Gateway
+              </span>
+              <button 
+                onClick={() => setNotifications(notifications.map(n => ({ ...n, read: true })))} 
+                className="text-teal-400 hover:underline text-[9px] font-bold"
+              >
+                Mark all read
+              </button>
             </div>
-          ))}
-        </div>
-      )}
-
-      {/* Main Grid View */}
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-        
-        {/* Navigation Sidebar */}
-        <div className="lg:col-span-1 space-y-4">
-          <div className="bg-white border border-[#D1E5E5] rounded-2xl p-4 shadow-3xs space-y-1">
-            <button
-              onClick={() => setActiveTab('overview')}
-              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold transition-all text-left ${
-                activeTab === 'overview' ? 'bg-[#0A6E6E] text-white shadow-xs' : 'text-slate-600 hover:bg-slate-50'
-              }`}
-            >
-              <LayoutDashboard className="w-4 h-4" />
-              <span>Overview Analytics</span>
-            </button>
-
-            <button
-              onClick={() => setActiveTab('appointments')}
-              className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-bold transition-all text-left ${
-                activeTab === 'appointments' ? 'bg-[#0A6E6E] text-white shadow-xs' : 'text-slate-600 hover:bg-slate-50'
-              }`}
-            >
-              <div className="flex items-center gap-3">
-                <Calendar className="w-4 h-4" />
-                <span>Appointments & Home Visits</span>
+            {notifications.filter(n => !n.read).map(n => (
+              <div key={n.id} className="leading-relaxed opacity-95">
+                <span className="text-amber-400">[{n.title}]</span> {n.message} <span className="text-gray-500">({n.time})</span>
               </div>
-              {appointments.filter(a => a.status === 'Pending').length > 0 && (
-                <span className="text-[9px] px-2 py-0.5 rounded-full bg-amber-500 text-white font-bold">
-                  {appointments.filter(a => a.status === 'Pending').length}
-                </span>
-              )}
-            </button>
-
-            <button
-              onClick={() => setActiveTab('services')}
-              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold transition-all text-left ${
-                activeTab === 'services' ? 'bg-[#0A6E6E] text-white shadow-xs' : 'text-slate-600 hover:bg-slate-50'
-              }`}
-            >
-              <Activity className="w-4 h-4" />
-              <span>Service List Catalog</span>
-            </button>
-
-            <button
-              onClick={() => setActiveTab('wallet')}
-              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold transition-all text-left ${
-                activeTab === 'wallet' ? 'bg-[#0A6E6E] text-white shadow-xs' : 'text-slate-600 hover:bg-slate-50'
-              }`}
-            >
-              <Wallet className="w-4 h-4" />
-              <span>Wallet & Settlements</span>
-            </button>
-
-            <button
-              onClick={() => setActiveTab('profile')}
-              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold transition-all text-left ${
-                activeTab === 'profile' ? 'bg-[#0A6E6E] text-white shadow-xs' : 'text-slate-600 hover:bg-slate-50'
-              }`}
-            >
-              <User className="w-4 h-4" />
-              <span>Practice Profile</span>
-            </button>
+            ))}
           </div>
+        )}
 
-          {/* Quick Support Badge */}
-          <div className="bg-[#FAFBFD] border border-[#D1E5E5] rounded-2xl p-5 text-xs">
-            <h4 className="font-extrabold text-[#1A2B3C] uppercase tracking-wider mb-1.5 text-[10px]">Territorial Alignment</h4>
-            <p className="text-gray-400 font-medium leading-relaxed">
-              You are onboarded under <strong>{profile?.onboardedByType || 'District'} Partner</strong>. Platform fees of 5% on bookings automatically help grow territory-specific digital networks.
-            </p>
-          </div>
-        </div>
-
-        {/* Content Panels */}
-        <div className="lg:col-span-3 space-y-6">
+        {/* Content Panel */}
+        <div className="space-y-6">
 
           {/* TAB 1: OVERVIEW */}
           {activeTab === 'overview' && (
@@ -1180,6 +1201,6 @@ export default function PhysiotherapyDashboard({ setView, userEmail }: Physiothe
 
       </div>
 
-    </div>
+    </DashboardLayout>
   );
 }

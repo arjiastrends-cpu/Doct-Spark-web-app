@@ -13,6 +13,7 @@ import {
   Pill, FlaskConical, Dumbbell
 } from 'lucide-react';
 import { Role } from '../../types';
+import { supabase } from '../../lib/supabase';
 
 interface HeaderProps {
   currentView: string;
@@ -372,10 +373,19 @@ export default function Header({
     }));
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    try {
+      const supabaseUrl = (import.meta as any).env?.VITE_SUPABASE_URL;
+      if (supabaseUrl && !supabaseUrl.includes('placeholder')) {
+        await supabase.auth.signOut();
+      }
+    } catch (e) {
+      console.warn('Supabase signout failed during logout:', e);
+    }
+    const correctLoginView = userRole === 'partner' ? 'partner-login' : 'login';
     setUserRole(null);
     setUserEmail(null);
-    setView('home');
+    setView(correctLoginView);
     setShowProfileDropdown(false);
     setActiveDropdown(null);
   };

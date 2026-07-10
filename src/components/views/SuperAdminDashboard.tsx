@@ -27,12 +27,30 @@ import {
 } from '../../data/walletUtils';
 import PartnerRegister from './PartnerRegister';
 import TermsManagementModule from './TermsManagementModule';
+import DashboardLayout from '../layout/DashboardLayout';
+import { Role } from '../../types';
 
 interface SuperAdminDashboardProps {
   setView: (view: string) => void;
+  userEmail: string | null;
+  currentView: string;
+  userRole: Role | null;
+  setUserRole: (role: Role | null) => void;
+  setUserEmail: (email: string | null) => void;
+  notificationsCount: number;
+  onOpenNotifications: () => void;
 }
 
-export default function SuperAdminDashboard({ setView }: SuperAdminDashboardProps) {
+export default function SuperAdminDashboard({
+  setView,
+  userEmail,
+  currentView,
+  userRole,
+  setUserRole,
+  setUserEmail,
+  notificationsCount,
+  onOpenNotifications
+}: SuperAdminDashboardProps) {
   const [partners, setPartners] = React.useState<any[]>([]);
   const [doctors, setDoctors] = React.useState<Doctor[]>([]);
   const [clinics, setClinics] = React.useState<Clinic[]>([]);
@@ -3059,202 +3077,18 @@ export default function SuperAdminDashboard({ setView }: SuperAdminDashboardProp
   };
 
   return (
-    <div className="flex-grow max-w-7xl w-full mx-auto px-4 md:px-8 py-8" id="superadmin-dashboard-container">
-      
-      {/* Redesigned Title block */}
-      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center bg-white border border-[#D1E5E5] rounded-3xl p-6 mb-8 shadow-3xs relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-48 h-48 rounded-full bg-slate-50/60 -mr-16 -mt-16 -z-10"></div>
-        <div>
-          <div className="flex items-center gap-2 mb-2 flex-wrap">
-            <span className="text-[10px] bg-indigo-50 text-indigo-700 font-extrabold px-3 py-1 rounded-full uppercase tracking-wider border border-indigo-200">
-              🛡️ Master Control Console
-            </span>
-            <span className="text-[10px] bg-slate-100 text-slate-600 font-extrabold px-3 py-1 rounded-full uppercase tracking-wider border border-slate-200 flex items-center gap-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-              Secured Root Access
-            </span>
-          </div>
-          <h1 className="text-2xl md:text-3xl font-black text-[#1A2B3C] font-heading tracking-tight">DOCT SPARK Super Admin Hub</h1>
-          <p className="text-xs text-gray-500 max-w-2xl leading-relaxed">Ultimate platform orchestration, active territory control, live billing logs, and clinician credential verifications.</p>
-        </div>
-
-        <div className="mt-5 lg:mt-0 flex gap-2 flex-wrap shrink-0">
-          <button 
-            type="button"
-            onClick={() => {
-              seed10PendingProfiles();
-              addAuditLog('Trigger Demo Seeding', 'Super Admin', 'Super Admin triggered batch seed of 10 clinical profiles.');
-              setAuditLogs(getAuditLogs());
-            }}
-            className="px-4 py-2.5 bg-[#0A6E6E] hover:bg-[#075353] text-white text-xs font-black rounded-xl cursor-pointer transition-all shadow-sm flex items-center gap-1.5 hover:shadow transform active:scale-95"
-          >
-            ⚡ Seed 10 Pending Profiles
-          </button>
-          <button 
-            onClick={() => { setView('partner-login'); setView('home'); }}
-            className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-gray-700 text-xs font-bold rounded-xl cursor-pointer transition-all border border-gray-200 hover:shadow-xs"
-          >
-            Open Homepage
-          </button>
-          <button 
-            onClick={() => setView('partner-login')}
-            className="px-4 py-2.5 bg-red-50 hover:bg-red-100 text-red-600 text-xs font-bold rounded-xl cursor-pointer transition-all border border-red-200/50 hover:shadow-xs"
-          >
-            Logout Securely
-          </button>
-        </div>
-      </div>
-
-      {/* REDESIGNED OVERVIEW BENTO METRICS FOR SUPER ADMIN */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
-        
-        {/* Gross Revenue */}
-        <div className="bg-white border border-[#D1E5E5] rounded-2xl p-5 shadow-3xs flex items-center gap-4 transition-all hover:border-emerald-200">
-          <div className="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center border border-emerald-100 shrink-0">
-            <DollarSign className="w-6 h-6" />
-          </div>
-          <div>
-            <span className="text-[10px] font-extrabold text-gray-400 uppercase block tracking-wider">Gross Subscription Revenue</span>
-            <span className="text-xl md:text-2xl font-black text-emerald-700 font-heading">₹{financialMetrics.grossSubscriptionRevenue.toLocaleString('en-IN')}</span>
-            <span className="text-[9px] text-gray-400 block font-semibold mt-0.5">{financialMetrics.totalSignupsCount} active trial signups</span>
-          </div>
-        </div>
-
-        {/* Commissions Paid Out */}
-        <div className="bg-white border border-[#D1E5E5] rounded-2xl p-5 shadow-3xs flex items-center gap-4 transition-all hover:border-amber-200">
-          <div className="w-12 h-12 bg-amber-50 text-amber-600 rounded-2xl flex items-center justify-center border border-amber-100 shrink-0">
-            <TrendingUp className="w-6 h-6" />
-          </div>
-          <div>
-            <span className="text-[10px] font-extrabold text-gray-400 uppercase block tracking-wider">Total Commissions Disbursed</span>
-            <span className="text-xl md:text-2xl font-black text-[#1A2B3C] font-heading">₹{financialMetrics.totalCommissionsPaid.toLocaleString('en-IN')}</span>
-            <span className="text-[9px] text-gray-400 block font-semibold mt-0.5">₹{financialMetrics.districtCommissions.toLocaleString('en-IN')} Dist | ₹{financialMetrics.stateCommissions.toLocaleString('en-IN')} State</span>
-          </div>
-        </div>
-
-        {/* Net platform earnings */}
-        <div className="bg-white border border-[#D1E5E5] rounded-2xl p-5 shadow-3xs flex items-center gap-4 transition-all hover:border-indigo-200">
-          <div className="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center border border-indigo-100 shrink-0">
-            <Landmark className="w-6 h-6" />
-          </div>
-          <div>
-            <span className="text-[10px] font-extrabold text-gray-400 uppercase block tracking-wider">Net Platform Earnings</span>
-            <span className="text-xl md:text-2xl font-black text-indigo-700 font-heading">₹{financialMetrics.netPlatformEarnings.toLocaleString('en-IN')}</span>
-            <span className="text-[9px] text-gray-400 block font-semibold mt-0.5">Instant platform ledger net balance</span>
-          </div>
-        </div>
-
-        {/* Total Users and Partners count */}
-        <div className="bg-white border border-[#D1E5E5] rounded-2xl p-5 shadow-3xs flex items-center gap-4 transition-all hover:border-sky-200">
-          <div className="w-12 h-12 bg-[#F0F7F7] text-[#0A6E6E] rounded-2xl flex items-center justify-center border border-[#D1E5E5] shrink-0">
-            <Users className="w-6 h-6" />
-          </div>
-          <div>
-            <span className="text-[10px] font-extrabold text-gray-400 uppercase block tracking-wider">Active Alliance Network</span>
-            <span className="text-xl md:text-2xl font-black text-[#1A2B3C] font-heading">{partners.length} Partners</span>
-            <span className="text-[9px] text-gray-400 block font-semibold mt-0.5">{doctors.length} Docs | {clinics.length} Clinics | {pharmacies.length} Pharmacies | {physiotherapists.length} Physio</span>
-          </div>
-        </div>
-
-      </div>
-
-      {/* SIMULATED SYSTEM ACTIVITY LOGS (REVEALING NOTIFICATIONS SENDING) */}
-      {notificationLog.length > 0 && (
-        <div className="bg-slate-950 text-emerald-400 font-mono rounded-2xl p-4 text-[10px] mb-8 space-y-1 shadow-md max-h-36 overflow-y-auto border border-slate-800">
-          <div className="font-extrabold uppercase text-gray-400 border-b border-gray-800 pb-1.5 mb-2 flex justify-between items-center font-sans">
-            <span className="flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-red-500 animate-ping"></span>
-              Real-Time Simulated Messaging & Push Gateway Logs
-            </span>
-            <button onClick={() => setNotificationLog([])} className="text-red-400 hover:underline text-[9px] font-bold">Clear Logs</button>
-          </div>
-          {notificationLog.map((log, idx) => (
-            <div key={idx} className="leading-relaxed opacity-90">
-              {log}
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Mobile Header Bar */}
-      <div className="lg:hidden flex justify-between items-center bg-white border border-[#D1E5E5] rounded-2xl px-4 py-3 mb-6 shadow-xs">
-        <div className="flex items-center gap-2.5">
-          <button 
-            type="button"
-            onClick={() => setIsMobileSidebarOpen(true)}
-            className="p-2 bg-indigo-50 text-indigo-600 rounded-xl border border-indigo-100"
-          >
-            <Menu className="w-5 h-5 cursor-pointer" />
-          </button>
-          <div>
-            <span className="text-[9px] text-gray-400 font-extrabold uppercase tracking-wider block">Admin Control</span>
-            <span className="text-xs font-black text-slate-800">
-              {getActiveTabTitle()}
-            </span>
-          </div>
-        </div>
-        <button
-          type="button"
-          onClick={() => setIsMobileSidebarOpen(true)}
-          className="text-xs font-extrabold bg-indigo-50 text-indigo-600 px-3 py-1.5 rounded-xl border border-indigo-100 hover:bg-indigo-100 transition-all cursor-pointer"
-        >
-          Menu
-        </button>
-      </div>
-
-      {/* Local Mobile Sidebar Drawer */}
-      {isMobileSidebarOpen && (
-        <div className="fixed inset-0 z-50 flex lg:hidden animate-fade-in">
-          {/* Backdrop */}
-          <div 
-            className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs transition-opacity"
-            onClick={() => setIsMobileSidebarOpen(false)}
-          />
-
-          {/* Slide-over panel */}
-          <div className="relative w-80 max-w-xs bg-white h-full shadow-2xl flex flex-col justify-between p-6 z-10 overflow-y-auto">
-            <div className="flex flex-col gap-6">
-              <div className="flex justify-between items-center border-b border-slate-100 pb-3">
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center">
-                    <Activity className="w-4 h-4 text-white" />
-                  </div>
-                  <span className="text-sm font-extrabold text-indigo-600">Admin Console</span>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setIsMobileSidebarOpen(false)}
-                  className="p-1.5 hover:bg-slate-50 rounded-lg text-slate-400 hover:text-slate-900 cursor-pointer"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-              {renderSidebarContent()}
-            </div>
-            
-            {/* Footer */}
-            <div className="border-t border-slate-100 pt-4 flex flex-col gap-3">
-              <div className="px-2">
-                <span className="block text-[10px] font-bold text-slate-400 uppercase">Logged in auditor</span>
-                <span className="block text-xs font-bold text-slate-800 truncate">Master Auditor</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* DUAL-PANE COHESIVE WORKSPACE */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-        
-        {/* DESKTOP SIDEBAR COLUMN */}
-        <div className="hidden lg:block lg:col-span-3">
-          <div className="sticky top-24 bg-white border border-[#D1E5E5] rounded-3xl p-6 shadow-3xs flex flex-col gap-6">
-            {renderSidebarContent()}
-          </div>
-        </div>
-
-        {/* ACTIVE MAIN PANEL CONTENT COLUMN */}
-        <div className="col-span-12 lg:col-span-9 space-y-6">
+    <DashboardLayout
+      currentView={currentView}
+      setView={setView}
+      userRole={userRole}
+      setUserRole={setUserRole}
+      userEmail={userEmail}
+      setUserEmail={setUserEmail}
+      notificationsCount={notificationsCount}
+      onOpenNotifications={onOpenNotifications}
+      sidebar={renderSidebarContent()}
+      activeTabTitle={getActiveTabTitle()}
+    >
 
           {/* Render new enterprise modules for non-legacy tabs */}
           {!['telemetry', 'overview', 'doctors-clinics', 'physiotherapy', 'partner-management', 'commissions', 'target-settings', 'milestone-reports', 'referrals', 'announcements', 'settings', 'footer-settings', 'custom-pages', 'terms-management', 'audit-trail'].includes(mappedTab) && (
@@ -7003,9 +6837,6 @@ Thank you for driving Doct Spark digital health healthcare operations!
         </div>
       )}
 
-        </div> {/* /lg:col-span-9 */}
-      </div> {/* /grid */}
-
       {/* ==========================================
           MODAL: VIEW & EDIT REGISTRATION DETAILS
           ========================================== */}
@@ -9114,6 +8945,6 @@ Thank you for driving Doct Spark digital health healthcare operations!
         </div>
       )}
 
-    </div>
+    </DashboardLayout>
   );
 }

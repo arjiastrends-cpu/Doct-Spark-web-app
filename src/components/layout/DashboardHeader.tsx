@@ -6,6 +6,7 @@
 import React from 'react';
 import { Stethoscope, ChevronDown, ChevronRight, LogOut, Menu, X, Bell, Search, Zap, ShieldCheck, Users, DollarSign, Sliders } from 'lucide-react';
 import { Role } from '../../types';
+import { supabase } from '../../lib/supabase';
 
 interface DashboardHeaderProps {
   currentView: string;
@@ -16,6 +17,7 @@ interface DashboardHeaderProps {
   setUserEmail: (email: string | null) => void;
   notificationsCount: number;
   onOpenNotifications: () => void;
+  onOpenMobileMenu?: () => void;
 }
 
 interface NavItem {
@@ -185,7 +187,8 @@ export default function DashboardHeader({
   userEmail,
   setUserEmail,
   notificationsCount,
-  onOpenNotifications
+  onOpenNotifications,
+  onOpenMobileMenu
 }: DashboardHeaderProps) {
   const [isMobileDrawerOpen, setIsMobileDrawerOpen] = React.useState(false);
   const [activeDropdown, setActiveDropdown] = React.useState<string | null>(null);
@@ -316,13 +319,21 @@ export default function DashboardHeader({
     setIsMobileDrawerOpen(false);
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    try {
+      const supabaseUrl = (import.meta as any).env?.VITE_SUPABASE_URL;
+      if (supabaseUrl && !supabaseUrl.includes('placeholder')) {
+        await supabase.auth.signOut();
+      }
+    } catch (e) {
+      console.warn('Supabase signout failed during logout:', e);
+    }
+    const correctLoginView = userRole === 'partner' ? 'partner-login' : 'login';
     setUserRole(null);
     setUserEmail(null);
-    setView('home');
+    setView(correctLoginView);
     setShowProfileDropdown(false);
     setIsMobileDrawerOpen(false);
-    alert('Logged out successfully. Returning to the public homepage.');
   };
 
   const handleLogoClick = () => {
@@ -462,7 +473,13 @@ export default function DashboardHeader({
       <div className="flex items-center gap-3">
         {/* Mobile Hamburger menu */}
         <button
-          onClick={() => setIsMobileDrawerOpen(true)}
+          onClick={() => {
+            if (onOpenMobileMenu) {
+              onOpenMobileMenu();
+            } else {
+              setIsMobileDrawerOpen(true);
+            }
+          }}
           className="lg:hidden p-2 text-white/80 hover:text-white hover:bg-white/10 rounded-xl transition-all cursor-pointer mr-1 flex items-center justify-center"
           aria-label="Open dashboard navigation"
         >

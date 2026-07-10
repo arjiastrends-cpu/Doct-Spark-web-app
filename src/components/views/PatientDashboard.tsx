@@ -42,9 +42,12 @@ import { Appointment, Prescription } from '../../types';
 import { validateReferralId } from '../../data/referralUtils';
 import { getOrCreatePatientWallet, applyReferralCode, getWalletAdminConfig, debitPatientWallet, creditPatientWallet } from '../../data/walletUtils';
 import PatientLaboratory from './patient/PatientLaboratory';
+import DashboardLayout from '../layout/DashboardLayout';
 import PatientPharmacy from './patient/PatientPharmacy';
 import PatientPhysiotherapy from './patient/PatientPhysiotherapy';
 import { supabase } from '../../lib/supabase';
+
+import { Role } from '../../types';
 
 interface PatientDashboardProps {
   setView: (view: string) => void;
@@ -52,6 +55,12 @@ interface PatientDashboardProps {
   setSelectedDoctorId: (id: string | null) => void;
   setSelectedRoomId: (id: string | null) => void;
   userEmail?: string | null;
+  currentView: string;
+  userRole: Role | null;
+  setUserRole: (role: Role | null) => void;
+  setUserEmail: (email: string | null) => void;
+  notificationsCount: number;
+  onOpenNotifications: () => void;
 }
 
 export default function PatientDashboard({
@@ -59,7 +68,13 @@ export default function PatientDashboard({
   appointments: allAppointments,
   setSelectedDoctorId,
   setSelectedRoomId,
-  userEmail
+  userEmail,
+  currentView,
+  userRole,
+  setUserRole,
+  setUserEmail,
+  notificationsCount,
+  onOpenNotifications
  }: PatientDashboardProps) {
   const patientEmail = userEmail || 'aarav.mehta@doctspark.in';
 
@@ -677,93 +692,31 @@ export default function PatientDashboard({
     );
   };
 
+  const activeTabTitle = {
+    overview: '📊 Health Overview',
+    book: '🔍 Book Specialist',
+    appointments: '📅 Consultations & Bookings',
+    prescriptions: '📋 Prescriptions & Reports',
+    wallet: '💳 Spark Wallet',
+    profile: '👤 My Profile & Alerts',
+    laboratory: '🔬 Diagnostic Pathology Lab',
+    pharmacy: '💊 Digital Pharmacy & Meds',
+    physiotherapy: '♿ Physical Physiotherapy',
+  }[activeTab] || '📊 Workspace';
+
   return (
-    <div className="flex-1 max-w-7xl w-full mx-auto px-4 md:px-8 py-8" id="patient-dashboard-container">
-
-      {/* Mobile Header Bar */}
-      <div className="lg:hidden flex justify-between items-center bg-white border border-[#D1E5E5] rounded-2xl px-4 py-3 mb-6 shadow-xs">
-        <div className="flex items-center gap-2.5">
-          <button 
-            onClick={() => setIsMobileSidebarOpen(true)}
-            className="p-2 bg-teal-50 text-[#0A6E6E] rounded-xl border border-teal-100"
-          >
-            <Menu className="w-5 h-5 cursor-pointer" />
-          </button>
-          <div>
-            <span className="text-[9px] text-gray-400 font-extrabold uppercase tracking-wider block">Health Portal</span>
-            <span className="text-xs font-black text-slate-800">
-              {activeTab === 'overview' && '📊 Health Overview'}
-              {activeTab === 'book' && '🔍 Book Specialist'}
-              {activeTab === 'appointments' && '📅 Consultations & Bookings'}
-              {activeTab === 'prescriptions' && '📋 Prescriptions & Reports'}
-              {activeTab === 'wallet' && '💳 Spark Wallet'}
-              {activeTab === 'profile' && '👤 My Profile & Alerts'}
-              {activeTab === 'laboratory' && '🔬 Diagnostic Pathology Lab'}
-              {activeTab === 'pharmacy' && '💊 Digital Pharmacy & Meds'}
-              {activeTab === 'physiotherapy' && '♿ Physical Physiotherapy'}
-            </span>
-          </div>
-        </div>
-        <button
-          onClick={() => setIsMobileSidebarOpen(true)}
-          className="text-xs font-extrabold bg-[#0A6E6E]/10 text-[#0A6E6E] px-3 py-1.5 rounded-xl border border-[#0A6E6E]/15 hover:bg-[#0A6E6E]/15 transition-all cursor-pointer"
-        >
-          Menu
-        </button>
-      </div>
-
-      {/* Local Mobile Sidebar Drawer */}
-      {isMobileSidebarOpen && (
-        <div className="fixed inset-0 z-50 flex lg:hidden animate-fade-in">
-          {/* Backdrop */}
-          <div 
-            className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs transition-opacity"
-            onClick={() => setIsMobileSidebarOpen(false)}
-          />
-
-          {/* Slide-over panel */}
-          <div className="relative w-80 max-w-xs bg-white h-full shadow-2xl flex flex-col justify-between p-6 z-10 overflow-y-auto">
-            <div className="flex flex-col gap-6">
-              <div className="flex justify-between items-center border-b border-slate-100 pb-3">
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 bg-gradient-to-tr from-[#0A6E6E] to-[#14B8A6] rounded-lg flex items-center justify-center">
-                    <Activity className="w-4 h-4 text-white" />
-                  </div>
-                  <span className="text-sm font-extrabold text-[#0A6E6E]">Health Control Panel</span>
-                </div>
-                <button
-                  onClick={() => setIsMobileSidebarOpen(false)}
-                  className="p-1.5 hover:bg-slate-50 rounded-lg text-slate-400 hover:text-slate-900 cursor-pointer"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-              {renderSidebarContent()}
-            </div>
-            
-            {/* Footer */}
-            <div className="border-t border-slate-100 pt-4 flex flex-col gap-3">
-              <div className="px-2">
-                <span className="block text-[10px] font-bold text-slate-400 uppercase">Logged in patient</span>
-                <span className="block text-xs font-bold text-slate-800 truncate">{patientName}</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* 2-Column Responsive Workspace Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-        
-        {/* COLUMN 1: REDESIGNED PATIENT SIDEBAR */}
-        <div className="hidden lg:block lg:col-span-1">
-          <div className="sticky top-24 bg-white border border-[#D1E5E5] rounded-3xl p-6 shadow-3xs flex flex-col gap-6">
-            {renderSidebarContent()}
-          </div>
-        </div>
-
-        {/* COLUMN 2: DYNAMIC ACTIVE TAB VIEWS */}
-        <div className="lg:col-span-3">
+    <DashboardLayout
+      currentView={currentView}
+      setView={setView}
+      userRole={userRole}
+      setUserRole={setUserRole}
+      userEmail={userEmail}
+      setUserEmail={setUserEmail}
+      notificationsCount={notificationsCount}
+      onOpenNotifications={onOpenNotifications}
+      sidebar={renderSidebarContent()}
+      activeTabTitle={activeTabTitle}
+    >
 
           {/* =========================================
               VIEW 1: OVERVIEW / DASHBOARD HOME
@@ -1831,10 +1784,6 @@ export default function PatientDashboard({
             </div>
           )}
 
-        </div>
-
-      </div>
-
       {/* PRESCRIPTION DETAIL MODAL */}
       {activePrescription && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
@@ -1959,6 +1908,6 @@ export default function PatientDashboard({
         </div>
       )}
 
-    </div>
+    </DashboardLayout>
   );
 }

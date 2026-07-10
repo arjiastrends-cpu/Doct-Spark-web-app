@@ -33,12 +33,19 @@ import {
   Download,
   DollarSign
 } from 'lucide-react';
-import { Medicine, MedicineOrder, Pharmacy } from '../../types';
+import { Medicine, MedicineOrder, Pharmacy, Role } from '../../types';
 import { generateCommission } from '../../data/commissionUtils';
+import DashboardLayout from '../layout/DashboardLayout';
 
 interface PharmacyDashboardProps {
   setView: (view: string) => void;
   userEmail: string | null;
+  currentView: string;
+  userRole: Role | null;
+  setUserRole: (role: Role | null) => void;
+  setUserEmail: (email: string | null) => void;
+  notificationsCount: number;
+  onOpenNotifications: () => void;
 }
 
 // Initial mock medicines if localStorage is empty
@@ -240,7 +247,16 @@ const INITIAL_ORDERS: MedicineOrder[] = [
   }
 ];
 
-export default function PharmacyDashboard({ setView, userEmail }: PharmacyDashboardProps) {
+export default function PharmacyDashboard({
+  setView,
+  userEmail,
+  currentView,
+  userRole,
+  setUserRole,
+  setUserEmail,
+  notificationsCount,
+  onOpenNotifications
+}: PharmacyDashboardProps) {
   // Navigation
   const [activeTab, setActiveTab] = React.useState<
     'overview' | 'profile' | 'catalog' | 'inventory' | 'verifications' | 'orders' | 'wallet' | 'reports' | 'reviews' | 'settings'
@@ -784,6 +800,115 @@ export default function PharmacyDashboard({ setView, userEmail }: PharmacyDashbo
   // Categories list
   const categoriesList = ['Analgesics / Antipyretics', 'Antibiotics', 'Cardiac / Cholesterol', 'Diabetes / Antidiabetic', 'Respiratory', 'Vitamins / Minerals'];
 
+  const renderSidebarContent = () => {
+    return (
+      <div className="space-y-3">
+        <div className="flex items-center gap-3 border-b border-gray-100 pb-4 mb-4">
+          <div className="w-10 h-10 bg-[#0A6E6E]/10 text-[#0A6E6E] rounded-full flex items-center justify-center text-lg font-black border border-[#0A6E6E]/20">
+            💊
+          </div>
+          <div className="overflow-hidden">
+            <h3 className="font-extrabold text-sm text-[#1A2B3C] truncate leading-tight">{pharmacy?.name}</h3>
+            <p className="text-[10px] text-gray-400 font-medium truncate mt-0.5">Lic: {pharmacy?.licenseNumber}</p>
+            <span className="inline-block mt-1 text-[8px] bg-emerald-50 text-emerald-700 font-black px-1.5 py-0.5 rounded border border-emerald-200">
+              Active / Verified
+            </span>
+          </div>
+        </div>
+
+        <div className="space-y-1">
+          <button
+            onClick={() => setActiveTab('overview')}
+            className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${activeTab === 'overview' ? 'bg-[#0A6E6E] text-white' : 'text-gray-500 hover:bg-slate-50'}`}
+          >
+            <LayoutDashboard className="w-4 h-4" /> Overview Dashboard
+          </button>
+          <button
+            onClick={() => setActiveTab('profile')}
+            className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${activeTab === 'profile' ? 'bg-[#0A6E6E] text-white' : 'text-gray-500 hover:bg-slate-50'}`}
+          >
+            <User className="w-4 h-4" /> Store Profile
+          </button>
+          <button
+            onClick={() => setActiveTab('catalog')}
+            className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${activeTab === 'catalog' ? 'bg-[#0A6E6E] text-white' : 'text-gray-500 hover:bg-slate-50'}`}
+          >
+            <Pill className="w-4 h-4" /> Medicine Catalog
+          </button>
+          <button
+            onClick={() => setActiveTab('inventory')}
+            className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${activeTab === 'inventory' ? 'bg-[#0A6E6E] text-white' : 'text-gray-500 hover:bg-slate-50'}`}
+          >
+            <Boxes className="w-4 h-4" /> Inventory Management
+          </button>
+          <button
+            onClick={() => setActiveTab('verifications')}
+            className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${activeTab === 'verifications' ? 'bg-[#0A6E6E] text-white' : 'text-gray-500 hover:bg-slate-50'}`}
+          >
+            <span className="flex items-center gap-2.5">
+              <CheckSquare className="w-4 h-4" /> Prescription Audit
+            </span>
+            {orders.filter(o => o.status === 'Prescription Review').length > 0 && (
+              <span className="bg-rose-500 text-white font-black text-[9px] px-2 py-0.5 rounded-full animate-pulse">
+                {orders.filter(o => o.status === 'Prescription Review').length}
+              </span>
+            )}
+          </button>
+          <button
+            onClick={() => setActiveTab('orders')}
+            className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${activeTab === 'orders' ? 'bg-[#0A6E6E] text-white' : 'text-gray-500 hover:bg-slate-50'}`}
+          >
+            <span className="flex items-center gap-2.5">
+              <ShoppingBag className="w-4 h-4" /> Order Tracking
+            </span>
+            {metrics.pendingOrdersCount > 0 && (
+              <span className="bg-amber-500 text-white font-black text-[9px] px-2 py-0.5 rounded-full">
+                {metrics.pendingOrdersCount}
+              </span>
+            )}
+          </button>
+          <button
+            onClick={() => setActiveTab('wallet')}
+            className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${activeTab === 'wallet' ? 'bg-[#0A6E6E] text-white' : 'text-gray-500 hover:bg-slate-50'}`}
+          >
+            <Wallet className="w-4 h-4" /> Wallet & Settlement
+          </button>
+          <button
+            onClick={() => setActiveTab('reports')}
+            className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${activeTab === 'reports' ? 'bg-[#0A6E6E] text-white' : 'text-gray-500 hover:bg-slate-50'}`}
+          >
+            <FileText className="w-4 h-4" /> Export Analytics
+          </button>
+          <button
+            onClick={() => setActiveTab('reviews')}
+            className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${activeTab === 'reviews' ? 'bg-[#0A6E6E] text-white' : 'text-gray-500 hover:bg-slate-50'}`}
+          >
+            <Star className="w-4 h-4" /> Reviews & Feedback
+          </button>
+          <button
+            onClick={() => setActiveTab('settings')}
+            className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${activeTab === 'settings' ? 'bg-[#0A6E6E] text-white' : 'text-gray-500 hover:bg-slate-50'}`}
+          >
+            <Settings className="w-4 h-4" /> Settings & Alerts
+          </button>
+        </div>
+
+        <div className="pt-4 border-t border-gray-100 font-sans">
+          <button
+            onClick={() => {
+              setUserRole(null);
+              setUserEmail(null);
+              setView('login');
+            }}
+            className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-rose-600 hover:bg-rose-50 cursor-pointer"
+          >
+            <LogOut className="w-4 h-4" /> Disconnect Session
+          </button>
+        </div>
+      </div>
+    );
+  };
+
   if (!pharmacy) {
     return (
       <div className="flex-1 flex items-center justify-center py-20">
@@ -794,134 +919,49 @@ export default function PharmacyDashboard({ setView, userEmail }: PharmacyDashbo
   }
 
   return (
-    <div className="flex-1 w-full max-w-7xl mx-auto px-4 py-6" id="pharmacy-dashboard">
-      
-      {/* Real-time SMS logs banner */}
-      {localNotifications.length > 0 && (
-        <div className="mb-4 bg-slate-950 text-emerald-400 font-mono text-[10px] p-3 rounded-xl border border-slate-800 shadow-sm flex items-center justify-between gap-4">
-          <div className="flex items-center gap-2">
-            <span className="bg-emerald-500/20 px-1.5 py-0.5 rounded text-emerald-500 font-black tracking-widest text-[8px] animate-pulse">LIVE</span>
-            <span className="text-slate-400 font-black">LATEST PHARMACY EVENT:</span>
-            <span>{localNotifications[0].title} — {localNotifications[0].desc} ({localNotifications[0].time})</span>
-          </div>
-          <button 
-            onClick={() => setLocalNotifications([])} 
-            className="text-[9px] font-bold text-rose-400 hover:underline shrink-0 bg-transparent"
-          >
-            Clear Alerts
-          </button>
-        </div>
-      )}
-
-      {/* Main Grid: Responsive 12-columns */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+    <DashboardLayout
+      currentView={currentView}
+      setView={setView}
+      userRole={userRole}
+      setUserRole={setUserRole}
+      userEmail={userEmail}
+      setUserEmail={setUserEmail}
+      notificationsCount={notificationsCount}
+      onOpenNotifications={onOpenNotifications}
+      sidebar={renderSidebarContent()}
+      activeTabTitle={
+        activeTab === 'overview' ? '📊 Pharmacy Overview' :
+        activeTab === 'profile' ? '🏬 Store Profile' :
+        activeTab === 'catalog' ? '💊 Medicine Catalog' :
+        activeTab === 'inventory' ? '📦 Inventory Management' :
+        activeTab === 'verifications' ? '📋 Prescription Audit' :
+        activeTab === 'orders' ? '🛒 Order Tracking' :
+        activeTab === 'wallet' ? '💰 Wallet & Settlement' :
+        activeTab === 'reports' ? '📈 Export Analytics' :
+        activeTab === 'reviews' ? '⭐ Reviews & Feedback' : '⚙️ Pharmacy Settings'
+      }
+    >
+      <div className="space-y-6">
         
-        {/* LEFT RAIL: Navigation */}
-        <div className="lg:col-span-3 bg-white border border-[#D1E5E5] rounded-2xl p-4 shadow-2xs space-y-3">
-          <div className="flex items-center gap-3 border-b border-gray-100 pb-4 mb-4">
-            <div className="w-10 h-10 bg-[#0A6E6E]/10 text-[#0A6E6E] rounded-full flex items-center justify-center text-lg font-black border border-[#0A6E6E]/20">
-              💊
+        {/* Real-time SMS logs banner */}
+        {localNotifications.length > 0 && (
+          <div className="mb-4 bg-slate-950 text-emerald-400 font-mono text-[10px] p-3 rounded-xl border border-slate-800 shadow-sm flex items-center justify-between gap-4">
+            <div className="flex items-center gap-2">
+              <span className="bg-emerald-500/20 px-1.5 py-0.5 rounded text-emerald-500 font-black tracking-widest text-[8px] animate-pulse">LIVE</span>
+              <span className="text-slate-400 font-black">LATEST PHARMACY EVENT:</span>
+              <span>{localNotifications[0].title} — {localNotifications[0].desc} ({localNotifications[0].time})</span>
             </div>
-            <div className="overflow-hidden">
-              <h3 className="font-extrabold text-sm text-[#1A2B3C] truncate leading-tight">{pharmacy.name}</h3>
-              <p className="text-[10px] text-gray-400 font-medium truncate mt-0.5">Lic: {pharmacy.licenseNumber}</p>
-              <span className="inline-block mt-1 text-[8px] bg-emerald-50 text-emerald-700 font-black px-1.5 py-0.5 rounded border border-emerald-200">
-                Active / Verified
-              </span>
-            </div>
-          </div>
-
-          <div className="space-y-1">
-            <button
-              onClick={() => setActiveTab('overview')}
-              className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${activeTab === 'overview' ? 'bg-[#0A6E6E] text-white' : 'text-gray-500 hover:bg-slate-50'}`}
+            <button 
+              onClick={() => setLocalNotifications([])} 
+              className="text-[9px] font-bold text-rose-400 hover:underline shrink-0 bg-transparent"
             >
-              <LayoutDashboard className="w-4 h-4" /> Overview Dashboard
-            </button>
-            <button
-              onClick={() => setActiveTab('profile')}
-              className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${activeTab === 'profile' ? 'bg-[#0A6E6E] text-white' : 'text-gray-500 hover:bg-slate-50'}`}
-            >
-              <User className="w-4 h-4" /> Store Profile
-            </button>
-            <button
-              onClick={() => setActiveTab('catalog')}
-              className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${activeTab === 'catalog' ? 'bg-[#0A6E6E] text-white' : 'text-gray-500 hover:bg-slate-50'}`}
-            >
-              <Pill className="w-4 h-4" /> Medicine Catalog
-            </button>
-            <button
-              onClick={() => setActiveTab('inventory')}
-              className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${activeTab === 'inventory' ? 'bg-[#0A6E6E] text-white' : 'text-gray-500 hover:bg-slate-50'}`}
-            >
-              <Boxes className="w-4 h-4" /> Inventory Management
-            </button>
-            <button
-              onClick={() => setActiveTab('verifications')}
-              className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${activeTab === 'verifications' ? 'bg-[#0A6E6E] text-white' : 'text-gray-500 hover:bg-slate-50'}`}
-            >
-              <span className="flex items-center gap-2.5">
-                <CheckSquare className="w-4 h-4" /> Prescription Audit
-              </span>
-              {orders.filter(o => o.status === 'Prescription Review').length > 0 && (
-                <span className="bg-rose-500 text-white font-black text-[9px] px-2 py-0.5 rounded-full animate-pulse">
-                  {orders.filter(o => o.status === 'Prescription Review').length}
-                </span>
-              )}
-            </button>
-            <button
-              onClick={() => setActiveTab('orders')}
-              className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${activeTab === 'orders' ? 'bg-[#0A6E6E] text-white' : 'text-gray-500 hover:bg-slate-50'}`}
-            >
-              <span className="flex items-center gap-2.5">
-                <ShoppingBag className="w-4 h-4" /> Order Tracking
-              </span>
-              {metrics.pendingOrdersCount > 0 && (
-                <span className="bg-amber-500 text-white font-black text-[9px] px-2 py-0.5 rounded-full">
-                  {metrics.pendingOrdersCount}
-                </span>
-              )}
-            </button>
-            <button
-              onClick={() => setActiveTab('wallet')}
-              className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${activeTab === 'wallet' ? 'bg-[#0A6E6E] text-white' : 'text-gray-500 hover:bg-slate-50'}`}
-            >
-              <Wallet className="w-4 h-4" /> Wallet & Settlement
-            </button>
-            <button
-              onClick={() => setActiveTab('reports')}
-              className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${activeTab === 'reports' ? 'bg-[#0A6E6E] text-white' : 'text-gray-500 hover:bg-slate-50'}`}
-            >
-              <FileText className="w-4 h-4" /> Export Analytics
-            </button>
-            <button
-              onClick={() => setActiveTab('reviews')}
-              className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${activeTab === 'reviews' ? 'bg-[#0A6E6E] text-white' : 'text-gray-500 hover:bg-slate-50'}`}
-            >
-              <Star className="w-4 h-4" /> Reviews & Feedback
-            </button>
-            <button
-              onClick={() => setActiveTab('settings')}
-              className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${activeTab === 'settings' ? 'bg-[#0A6E6E] text-white' : 'text-gray-500 hover:bg-slate-50'}`}
-            >
-              <Settings className="w-4 h-4" /> Settings & Alerts
+              Clear Alerts
             </button>
           </div>
+        )}
 
-          <div className="pt-4 border-t border-gray-100">
-            <button
-              onClick={() => {
-                setView('login');
-              }}
-              className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-rose-600 hover:bg-rose-50 cursor-pointer"
-            >
-              <LogOut className="w-4 h-4" /> Disconnect Session
-            </button>
-          </div>
-        </div>
-
-        {/* RIGHT AREA: View Content */}
-        <div className="lg:col-span-9 space-y-6">
+        {/* VIEW CONTENT */}
+        <div className="space-y-6">
           
           {/* ==========================================
               TAB: OVERVIEW
@@ -2011,6 +2051,6 @@ export default function PharmacyDashboard({ setView, userEmail }: PharmacyDashbo
         </div>
       )}
 
-    </div>
+    </DashboardLayout>
   );
 }

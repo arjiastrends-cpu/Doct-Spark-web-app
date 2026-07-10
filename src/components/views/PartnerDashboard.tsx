@@ -17,13 +17,30 @@ import PartnerRegister from './PartnerRegister';
 import PharmacyRegister from './PharmacyRegister';
 import LaboratoryRegister from './LaboratoryRegister';
 import PhysiotherapyRegister from './PhysiotherapyRegister';
+import DashboardLayout from '../layout/DashboardLayout';
+import { Role } from '../../types';
 
 interface PartnerDashboardProps {
   setView: (view: string) => void;
   userEmail: string | null;
+  currentView: string;
+  userRole: Role | null;
+  setUserRole: (role: Role | null) => void;
+  setUserEmail: (email: string | null) => void;
+  notificationsCount: number;
+  onOpenNotifications: () => void;
 }
 
-export default function PartnerDashboard({ setView, userEmail }: PartnerDashboardProps) {
+export default function PartnerDashboard({
+  setView,
+  userEmail,
+  currentView,
+  userRole,
+  setUserRole,
+  setUserEmail,
+  notificationsCount,
+  onOpenNotifications
+}: PartnerDashboardProps) {
   // Load Partner information
   const [partner, setPartner] = React.useState<Partner | null>(null);
   const [partners, setPartners] = React.useState<any[]>([]);
@@ -1103,126 +1120,29 @@ export default function PartnerDashboard({ setView, userEmail }: PartnerDashboar
     );
   };
 
+  const activeTabTitle = {
+    overview: '📊 Performance Overview',
+    'onboard-doctor': '🩺 Onboard New Doctor',
+    'onboard-clinic': '🏢 Onboard New Clinic',
+    verifications: '🛡️ Verification Pipeline',
+    'district-partners': '👥 District Partners',
+    profile: '👤 My Profile Details',
+    earnings: '💸 Earnings & Payouts',
+  }[activeTab] || '📊 Workspace';
+
   return (
-    <div className="flex-1 max-w-7xl w-full mx-auto px-4 md:px-8 py-8" id="partner-dashboard-container">
-      
-      {/* Top Welcome Title & Status Badge */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-white border border-[#D1E5E5] rounded-2xl p-6 mb-6 shadow-xs">
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <span className="text-[10px] bg-teal-50 text-[#0A6E6E] font-extrabold px-2.5 py-1 rounded-full uppercase tracking-wider border border-[#D1E5E5]/60">
-              {partner.partnerType} Level Partner
-            </span>
-            <span className="text-xs text-gray-400 font-semibold">Territory: {partner.assignedDistrict ? `${partner.assignedDistrict}, ` : ''}{partner.assignedState}</span>
-          </div>
-          <h1 className="text-xl md:text-2xl font-black text-[#1A2B3C] font-heading">Welcome, {partner.name}!</h1>
-          <p className="text-xs text-gray-500">Manage clinical directory onboarding and track performance commissions instantly.</p>
-        </div>
-
-        <div className="mt-4 md:mt-0 flex gap-2">
-          <button 
-            onClick={() => { setView('partner-login'); setView('home'); }}
-            className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-gray-700 text-xs font-bold rounded-lg cursor-pointer transition-all"
-          >
-            Go Public Site
-          </button>
-          <button 
-            onClick={() => setView('partner-login')}
-            className="px-4 py-2 bg-red-50 hover:bg-red-100 text-red-600 text-xs font-bold rounded-lg cursor-pointer transition-all"
-          >
-            Logout Portal
-          </button>
-        </div>
-      </div>
-
-      {/* Mobile Navigation Header Bar */}
-      <div className="lg:hidden flex justify-between items-center bg-white border border-[#D1E5E5] rounded-2xl px-4 py-3 mb-6 shadow-xs">
-        <div className="flex items-center gap-2">
-          <button 
-            onClick={() => setIsMobileSidebarOpen(true)}
-            className="p-2 bg-teal-50 text-[#0A6E6E] rounded-xl border border-teal-100"
-          >
-            <Menu className="w-5 h-5 cursor-pointer" />
-          </button>
-          <div>
-            <span className="text-[9px] text-gray-400 font-extrabold uppercase tracking-wider block">Currently Viewing</span>
-            <span className="text-xs font-black text-slate-800">
-              {activeTab === 'overview' && '📊 Performance Overview'}
-              {activeTab === 'onboard-doctor' && '🩺 Onboard New Doctor'}
-              {activeTab === 'onboard-clinic' && '🏢 Onboard New Clinic'}
-              {activeTab === 'verifications' && '🛡️ Verification Pipeline'}
-              {activeTab === 'district-partners' && '👥 District Partners'}
-              {activeTab === 'profile' && '👤 My Profile Details'}
-              {activeTab === 'earnings' && '💸 Earnings & Payouts'}
-            </span>
-          </div>
-        </div>
-        <button
-          onClick={() => setIsMobileSidebarOpen(true)}
-          className="text-xs font-extrabold bg-[#0A6E6E]/10 text-[#0A6E6E] px-3 py-1.5 rounded-xl border border-[#0A6E6E]/15 hover:bg-[#0A6E6E]/15 transition-all cursor-pointer"
-        >
-          Menu
-        </button>
-      </div>
-
-      {/* Local Mobile Sidebar Drawer */}
-      {isMobileSidebarOpen && (
-        <div className="fixed inset-0 z-50 flex lg:hidden">
-          {/* Backdrop */}
-          <div 
-            className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs transition-opacity animate-fade-in"
-            onClick={() => setIsMobileSidebarOpen(false)}
-          />
-
-          {/* Slide-over panel */}
-          <div className="relative w-80 max-w-xs bg-white h-full shadow-2xl flex flex-col justify-between p-6 z-10 animate-in slide-in-from-left duration-200 overflow-y-auto">
-            <div className="flex flex-col gap-6">
-              <div className="flex justify-between items-center border-b border-slate-100 pb-3">
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 bg-gradient-to-tr from-[#0A6E6E] to-[#14B8A6] rounded-lg flex items-center justify-center">
-                    <Briefcase className="w-4 h-4 text-white" />
-                  </div>
-                  <span className="text-sm font-extrabold text-[#0A6E6E]">Partner Controls</span>
-                </div>
-                <button
-                  onClick={() => setIsMobileSidebarOpen(false)}
-                  className="p-1.5 hover:bg-slate-50 rounded-lg text-slate-400 hover:text-slate-900 cursor-pointer"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-              {renderSidebarContent()}
-            </div>
-            
-            {/* Footer/Account Area */}
-            <div className="border-t border-slate-100 pt-4 flex flex-col gap-3">
-              <div className="px-2">
-                <span className="block text-[10px] font-bold text-slate-400 uppercase">Logged in partner</span>
-                <span className="block text-xs font-bold text-slate-800 truncate">{partner.name}</span>
-                <span className="block text-[9px] text-slate-400 mt-0.5">{partner.partnerType} Partner</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* 2-Column Responsive Workspace Layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-        
-        {/* COLUMN 1: NEW SIDEBAR NAVIGATION PANEL */}
-        <div className="hidden lg:block lg:col-span-1">
-          <div className="sticky top-24 bg-white border border-[#D1E5E5] rounded-2xl p-5 shadow-xs flex flex-col gap-6">
-            <div className="pb-3 border-b border-slate-100">
-              <span className="text-[10px] font-extrabold text-[#0A6E6E] uppercase tracking-wider block mb-0.5">Partner Workspace</span>
-              <span className="text-xs font-bold text-slate-500">Manage directory pipelines</span>
-            </div>
-            
-            {renderSidebarContent()}
-          </div>
-        </div>
-
-        {/* COLUMN 2: ACTIVE TAB VIEWPORTS & METRICS */}
-        <div className="col-span-1 lg:col-span-3">
+    <DashboardLayout
+      currentView={currentView}
+      setView={setView}
+      userRole={userRole}
+      setUserRole={setUserRole}
+      userEmail={userEmail}
+      setUserEmail={setUserEmail}
+      notificationsCount={notificationsCount}
+      onOpenNotifications={onOpenNotifications}
+      sidebar={renderSidebarContent()}
+      activeTabTitle={activeTabTitle}
+    >
           
           {/* CORE FINANCIAL WALLET AND PERFORMANCE STATISTICS */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
@@ -3813,9 +3733,6 @@ Thank you for driving Doct Spark digital health healthcare operations!
         </div>
       )}
 
-        </div> {/* COLUMN 2 END */}
-      </div> {/* GRID END */}
-
       {/* ==========================================
           DOCT SPARK: DOCTOR REVIEW MODAL OVERLAY
           ========================================== */}
@@ -4135,6 +4052,6 @@ Thank you for driving Doct Spark digital health healthcare operations!
         </div>
       )}
 
-    </div>
+    </DashboardLayout>
   );
 }

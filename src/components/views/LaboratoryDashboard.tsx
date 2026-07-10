@@ -48,7 +48,8 @@ import {
   LabBooking, 
   Laboratory,
   Partner,
-  CommissionRecord
+  CommissionRecord,
+  Role
 } from '../../types';
 import { 
   INITIAL_LAB_CATEGORIES, 
@@ -59,13 +60,29 @@ import {
   INITIAL_NOTIFICATIONS
 } from '../../data/labMockData';
 import { generateCommission } from '../../data/commissionUtils';
+import DashboardLayout from '../layout/DashboardLayout';
 
 interface LaboratoryDashboardProps {
   setView: (view: string) => void;
   userEmail: string | null;
+  currentView: string;
+  userRole: Role | null;
+  setUserRole: (role: Role | null) => void;
+  setUserEmail: (email: string | null) => void;
+  notificationsCount: number;
+  onOpenNotifications: () => void;
 }
 
-export default function LaboratoryDashboard({ setView, userEmail }: LaboratoryDashboardProps) {
+export default function LaboratoryDashboard({
+  setView,
+  userEmail,
+  currentView,
+  userRole,
+  setUserRole,
+  setUserEmail,
+  notificationsCount,
+  onOpenNotifications
+}: LaboratoryDashboardProps) {
   const emailKey = userEmail ? userEmail.trim().toLowerCase() : '';
 
   // 1. Load current Laboratory profile
@@ -1861,175 +1878,145 @@ export default function LaboratoryDashboard({ setView, userEmail }: LaboratoryDa
     }
   };
 
+  const renderSidebarContent = () => {
+    return (
+      <div className="space-y-3">
+        <div className="flex items-center gap-3 border-b border-gray-100 pb-4 mb-4">
+          <div className="w-10 h-10 bg-[#0A6E6E]/10 text-[#0A6E6E] rounded-full flex items-center justify-center text-lg font-black border border-[#0A6E6E]/20">
+            🧪
+          </div>
+          <div className="overflow-hidden">
+            <h3 className="font-extrabold text-sm text-[#1A2B3C] truncate leading-tight">{labName}</h3>
+            <p className="text-[10px] text-gray-400 font-medium truncate mt-0.5">Lic: {labProfile?.licenseNumber || 'MC-9810-NABL'}</p>
+            <span className="inline-block mt-1 text-[8px] bg-emerald-50 text-emerald-700 font-black px-1.5 py-0.5 rounded border border-emerald-200">
+              Approved / Verified
+            </span>
+          </div>
+        </div>
+
+        <div className="space-y-1">
+          <button
+            onClick={() => setActiveTab('overview')}
+            className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${activeTab === 'overview' ? 'bg-[#0A6E6E] text-white' : 'text-gray-500 hover:bg-slate-50'}`}
+          >
+            <LayoutDashboard className="w-4 h-4" /> Overview Desk
+          </button>
+
+          <button
+            onClick={() => setActiveTab('bookings')}
+            className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${activeTab === 'bookings' ? 'bg-[#0A6E6E] text-white' : 'text-gray-500 hover:bg-slate-50'}`}
+          >
+            <ClipboardList className="w-4 h-4" /> Manage Bookings
+          </button>
+
+          <button
+            onClick={() => setActiveTab('home-collection')}
+            className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${activeTab === 'home-collection' ? 'bg-[#0A6E6E] text-white' : 'text-gray-500 hover:bg-slate-50'}`}
+          >
+            <Truck className="w-4 h-4" /> Home Collection Fleet
+          </button>
+
+          <button
+            onClick={() => setActiveTab('categories')}
+            className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${activeTab === 'categories' ? 'bg-[#0A6E6E] text-white' : 'text-gray-500 hover:bg-slate-50'}`}
+          >
+            <Boxes className="w-4 h-4" /> Test Categories
+          </button>
+
+          <button
+            onClick={() => setActiveTab('tests')}
+            className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${activeTab === 'tests' ? 'bg-[#0A6E6E] text-white' : 'text-gray-500 hover:bg-slate-50'}`}
+          >
+            <Pill className="w-4 h-4" /> Tests Database
+          </button>
+
+          <button
+            onClick={() => setActiveTab('packages')}
+            className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${activeTab === 'packages' ? 'bg-[#0A6E6E] text-white' : 'text-gray-500 hover:bg-slate-50'}`}
+          >
+            <Layers className="w-4 h-4" /> Health Packages
+          </button>
+
+          <button
+            onClick={() => setActiveTab('wallet')}
+            className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${activeTab === 'wallet' ? 'bg-[#0A6E6E] text-white' : 'text-gray-500 hover:bg-slate-50'}`}
+          >
+            <Wallet className="w-4 h-4" /> Wallet & Commissions
+          </button>
+
+          <button
+            onClick={() => setActiveTab('patients')}
+            className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${activeTab === 'patients' ? 'bg-[#0A6E6E] text-white' : 'text-gray-500 hover:bg-slate-50'}`}
+          >
+            <Users className="w-4 h-4" /> Patient Database
+          </button>
+
+          <button
+            onClick={() => setActiveTab('reviews')}
+            className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${activeTab === 'reviews' ? 'bg-[#0A6E6E] text-white' : 'text-gray-500 hover:bg-slate-50'}`}
+          >
+            <Star className="w-4 h-4" /> Reputation Feedback
+          </button>
+
+          <button
+            onClick={() => setActiveTab('settings')}
+            className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${activeTab === 'settings' ? 'bg-[#0A6E6E] text-white' : 'text-gray-500 hover:bg-slate-50'}`}
+          >
+            <Settings className="w-4 h-4" /> Center Settings
+          </button>
+        </div>
+
+        <div className="space-y-4 pt-4 border-t border-gray-100 font-sans">
+          {/* Quick Export Panel */}
+          <div className="bg-[#F0F7F7] border border-[#D1E5E5] p-3 rounded-xl">
+            <span className="text-[9px] uppercase font-extrabold text-[#0A6E6E] block mb-1 font-sans">Export Daily Report</span>
+            <div className="grid grid-cols-3 gap-1">
+              <button onClick={() => handleExportData('PDF')} className="bg-white hover:bg-slate-50 border border-gray-200 text-slate-700 py-1 rounded text-[9px] font-bold transition-all cursor-pointer">PDF</button>
+              <button onClick={() => handleExportData('CSV')} className="bg-white hover:bg-slate-50 border border-gray-200 text-slate-700 py-1 rounded text-[9px] font-bold transition-all cursor-pointer">CSV</button>
+              <button onClick={() => handleExportData('Excel')} className="bg-white hover:bg-slate-50 border border-gray-200 text-slate-700 py-1 rounded text-[9px] font-bold transition-all cursor-pointer">Excel</button>
+            </div>
+          </div>
+
+          <button
+            onClick={() => {
+              setUserRole(null);
+              setUserEmail(null);
+              setView('login');
+            }}
+            className="w-full flex items-center gap-2.5 px-3 py-2 text-rose-600 hover:bg-rose-50 rounded-xl text-xs font-bold transition-all cursor-pointer"
+          >
+            <LogOut className="w-4 h-4" /> Secure Terminate Session
+          </button>
+        </div>
+      </div>
+    );
+  };
+
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col">
-      {/* Top Professional Banner */}
-      <header className="bg-[#0A6E6E] text-white px-6 py-4 flex justify-between items-center shadow-md border-b border-[#0A6E6E]/90">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-white/10 rounded-xl flex items-center justify-center border border-white/25">
-            <Activity className="w-6 h-6 text-white" />
-          </div>
-          <div>
-            <div className="flex items-center gap-1.5">
-              <h1 className="text-sm font-black tracking-tight font-heading">{labName}</h1>
-              <span className="text-[8px] bg-emerald-500 text-white font-bold px-1.5 py-0.5 rounded-full flex items-center gap-0.5">
-                ✓ NABL Verified
-              </span>
-            </div>
-            <p className="text-[10px] text-teal-100">Pathology & Home Sample Collection Hub</p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-4">
-          {/* Notifications bar */}
-          <div className="relative">
-            <button 
-              onClick={() => setShowNotificationPopup(!showNotificationPopup)}
-              className="p-1.5 hover:bg-white/10 rounded-lg cursor-pointer transition-all flex items-center justify-center border border-transparent hover:border-white/20"
-            >
-              <Bell className="w-4 h-4" />
-              {notifications.some(n => !n.read) && (
-                <span className="absolute -top-1 -right-1 w-2 h-2 bg-rose-500 rounded-full animate-ping" />
-              )}
-            </button>
-
-            {showNotificationPopup && (
-              <div className="absolute right-0 mt-2 z-50 bg-white border border-[#D1E5E5] w-72 rounded-2xl p-4 shadow-xl text-xs text-slate-800 animate-in fade-in slide-in-from-top-2">
-                <div className="flex justify-between items-center mb-2 pb-1 border-b border-gray-100">
-                  <span className="font-extrabold uppercase text-[9px] text-gray-400">Clinical Alerts</span>
-                  <button onClick={() => setShowNotificationPopup(false)} className="text-gray-400 font-bold">×</button>
-                </div>
-                <div className="space-y-2 max-h-[220px] overflow-y-auto">
-                  {notifications.map(n => (
-                    <div key={n.id} className={`p-2 rounded-xl border ${n.read ? 'bg-slate-50 border-gray-100 text-gray-500' : 'bg-teal-50/40 border-teal-100 font-medium'}`}>
-                      <div className="flex justify-between items-start gap-1">
-                        <p className="leading-tight">{n.message}</p>
-                        {!n.read && (
-                          <button onClick={() => handleClearNotif(n.id)} className="text-[9px] text-[#0A6E6E] hover:underline whitespace-nowrap">Mark</button>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-teal-800 text-white rounded-full flex items-center justify-center font-bold text-xs border border-white/20">
-              {labName ? labName.charAt(0) : 'L'}
-            </div>
-            <div className="hidden md:block">
-              <span className="text-[10px] text-teal-100 block">Logged in as</span>
-              <span className="text-xs font-bold block leading-none">{emailKey}</span>
-            </div>
-          </div>
-        </div>
-      </header>
-
-      {/* Main Body */}
-      <div className="flex-1 flex flex-col md:flex-row">
-        
-        {/* Sidebar */}
-        <aside className="w-full md:w-64 bg-white border-r border-[#D1E5E5] p-4 flex flex-col justify-between space-y-6">
-          <div className="space-y-1.5">
-            <span className="text-[9px] font-extrabold text-gray-400 uppercase tracking-wider block px-3">Laboratory Portal</span>
-            
-            <button
-              onClick={() => setActiveTab('overview')}
-              className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${activeTab === 'overview' ? 'bg-[#0A6E6E] text-white' : 'text-gray-500 hover:bg-slate-50'}`}
-            >
-              <LayoutDashboard className="w-4 h-4" /> Overview Desk
-            </button>
-
-            <button
-              onClick={() => setActiveTab('bookings')}
-              className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${activeTab === 'bookings' ? 'bg-[#0A6E6E] text-white' : 'text-gray-500 hover:bg-slate-50'}`}
-            >
-              <ClipboardList className="w-4 h-4" /> Manage Bookings
-            </button>
-
-            <button
-              onClick={() => setActiveTab('home-collection')}
-              className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${activeTab === 'home-collection' ? 'bg-[#0A6E6E] text-white' : 'text-gray-500 hover:bg-slate-50'}`}
-            >
-              <Truck className="w-4 h-4" /> Home Collection Fleet
-            </button>
-
-            <button
-              onClick={() => setActiveTab('categories')}
-              className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${activeTab === 'categories' ? 'bg-[#0A6E6E] text-white' : 'text-gray-500 hover:bg-slate-50'}`}
-            >
-              <Boxes className="w-4 h-4" /> Test Categories
-            </button>
-
-            <button
-              onClick={() => setActiveTab('tests')}
-              className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${activeTab === 'tests' ? 'bg-[#0A6E6E] text-white' : 'text-gray-500 hover:bg-slate-50'}`}
-            >
-              <Pill className="w-4 h-4" /> Tests Database
-            </button>
-
-            <button
-              onClick={() => setActiveTab('packages')}
-              className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${activeTab === 'packages' ? 'bg-[#0A6E6E] text-white' : 'text-gray-500 hover:bg-slate-50'}`}
-            >
-              <Layers className="w-4 h-4" /> Health Packages
-            </button>
-
-            <button
-              onClick={() => setActiveTab('wallet')}
-              className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${activeTab === 'wallet' ? 'bg-[#0A6E6E] text-white' : 'text-gray-500 hover:bg-slate-50'}`}
-            >
-              <Wallet className="w-4 h-4" /> Wallet & Commissions
-            </button>
-
-            <button
-              onClick={() => setActiveTab('patients')}
-              className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${activeTab === 'patients' ? 'bg-[#0A6E6E] text-white' : 'text-gray-500 hover:bg-slate-50'}`}
-            >
-              <Users className="w-4 h-4" /> Patient Database
-            </button>
-
-            <button
-              onClick={() => setActiveTab('reviews')}
-              className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${activeTab === 'reviews' ? 'bg-[#0A6E6E] text-white' : 'text-gray-500 hover:bg-slate-50'}`}
-            >
-              <Star className="w-4 h-4" /> Reputation Feedback
-            </button>
-
-            <button
-              onClick={() => setActiveTab('settings')}
-              className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${activeTab === 'settings' ? 'bg-[#0A6E6E] text-white' : 'text-gray-500 hover:bg-slate-50'}`}
-            >
-              <Settings className="w-4 h-4" /> Center Settings
-            </button>
-          </div>
-
-          <div className="space-y-4 pt-4 border-t border-gray-100">
-            {/* Quick Export Panel */}
-            <div className="bg-[#F0F7F7] border border-[#D1E5E5] p-3 rounded-xl">
-              <span className="text-[9px] uppercase font-extrabold text-[#0A6E6E] block mb-1">Export Daily Report</span>
-              <div className="grid grid-cols-3 gap-1">
-                <button onClick={() => handleExportData('PDF')} className="bg-white hover:bg-slate-50 border border-gray-200 text-slate-700 py-1 rounded text-[9px] font-bold transition-all cursor-pointer">PDF</button>
-                <button onClick={() => handleExportData('CSV')} className="bg-white hover:bg-slate-50 border border-gray-200 text-slate-700 py-1 rounded text-[9px] font-bold transition-all cursor-pointer">CSV</button>
-                <button onClick={() => handleExportData('Excel')} className="bg-white hover:bg-slate-50 border border-gray-200 text-slate-700 py-1 rounded text-[9px] font-bold transition-all cursor-pointer">Excel</button>
-              </div>
-            </div>
-
-            <button
-              onClick={() => setView('login')}
-              className="w-full flex items-center gap-2.5 px-3 py-2 text-rose-600 hover:bg-rose-50 rounded-xl text-xs font-bold transition-all cursor-pointer"
-            >
-              <LogOut className="w-4 h-4" /> Secure Terminate Session
-            </button>
-          </div>
-        </aside>
-
-        {/* Display panel */}
-        <main className="flex-1 p-6 overflow-y-auto max-h-[calc(100vh-73px)]">
-          {renderTabContent()}
-        </main>
+    <DashboardLayout
+      currentView={currentView}
+      setView={setView}
+      userRole={userRole}
+      setUserRole={setUserRole}
+      userEmail={userEmail}
+      setUserEmail={setUserEmail}
+      notificationsCount={notificationsCount}
+      onOpenNotifications={onOpenNotifications}
+      sidebar={renderSidebarContent()}
+      activeTabTitle={
+        activeTab === 'overview' ? '📊 Overview Desk' :
+        activeTab === 'bookings' ? '📋 Manage Bookings' :
+        activeTab === 'home-collection' ? '🚚 Home Collection Fleet' :
+        activeTab === 'categories' ? '📦 Test Categories' :
+        activeTab === 'tests' ? '💊 Tests Database' :
+        activeTab === 'packages' ? '🏥 Health Packages' :
+        activeTab === 'wallet' ? '💰 Wallet & Commissions' :
+        activeTab === 'patients' ? '🩹 Patient Database' :
+        activeTab === 'reviews' ? '⭐ Reputation Feedback' : '⚙️ Center Settings'
+      }
+    >
+      <div className="space-y-6">
+        {renderTabContent()}
       </div>
 
       {/* Global Clinical Report Upload Modal */}
@@ -2115,6 +2102,6 @@ export default function LaboratoryDashboard({ setView, userEmail }: LaboratoryDa
           </form>
         </div>
       )}
-    </div>
+    </DashboardLayout>
   );
 }

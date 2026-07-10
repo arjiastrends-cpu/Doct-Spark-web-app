@@ -12,7 +12,8 @@ import {
 } from 'lucide-react';
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, BarChart, Bar, Legend } from 'recharts';
 import { MOCK_CLINICS, MOCK_DOCTORS } from '../../data/mockData';
-import { Doctor, Clinic, Appointment } from '../../types';
+import { Doctor, Clinic, Appointment, Role } from '../../types';
+import DashboardLayout from '../layout/DashboardLayout';
 
 interface ClinicDashboardProps {
   setView: (view: string) => void;
@@ -22,6 +23,12 @@ interface ClinicDashboardProps {
   userEmail?: string | null;
   onAddDoctor: (newDoc: Doctor) => void;
   onRemoveDoctor: (id: string) => void;
+  currentView: string;
+  userRole: Role | null;
+  setUserRole: (role: Role | null) => void;
+  setUserEmail: (email: string | null) => void;
+  notificationsCount: number;
+  onOpenNotifications: () => void;
 }
 
 export default function ClinicDashboard({
@@ -31,7 +38,13 @@ export default function ClinicDashboard({
   appointments = [],
   userEmail,
   onAddDoctor,
-  onRemoveDoctor
+  onRemoveDoctor,
+  currentView,
+  userRole,
+  setUserRole,
+  setUserEmail,
+  notificationsCount,
+  onOpenNotifications
 }: ClinicDashboardProps) {
 
   // Evaluate the correct clinic associated with this user
@@ -566,90 +579,27 @@ export default function ClinicDashboard({
   );
 
   return (
-    <div className="flex-1 max-w-7xl w-full mx-auto px-4 lg:px-8 py-6" id="clinic-dashboard-root">
-
-      {/* MOBILE HEADER BAR */}
-      <div className="lg:hidden flex justify-between items-center bg-white border border-[#D1E5E5] rounded-2xl px-4 py-3.5 mb-6 shadow-sm">
-        <div className="flex items-center gap-2.5">
-          <button 
-            type="button"
-            onClick={() => setIsMobileSidebarOpen(true)}
-            className="p-2 bg-[#F0F7F7] text-[#0A6E6E] rounded-xl border border-[#D1E5E5]/60 hover:bg-[#E1F0F0] transition-colors"
-          >
-            <Menu className="w-5 h-5 cursor-pointer" />
-          </button>
-          <div>
-            <span className="text-[9px] text-gray-400 font-extrabold uppercase tracking-wider block leading-none mb-1">Clinic Center</span>
-            <span className="text-xs font-black text-slate-800">
-              {activeTab === 'overview' && '📊 Dashboard Overview'}
-              {activeTab === 'facilities' && '🏥 Chambers & Settings'}
-              {activeTab === 'doctors' && '🩺 Clinical Practitioners'}
-              {activeTab === 'staff' && '👥 Nursing & Admin Staff'}
-              {activeTab === 'appointments' && '📅 Consult Book Logs'}
-              {activeTab === 'patients' && '🩹 Clinic Patient Index'}
-              {activeTab === 'revenue' && '💰 Account Revenue Ledger'}
-            </span>
-          </div>
-        </div>
-        <button
-          type="button"
-          onClick={() => setIsMobileSidebarOpen(true)}
-          className="text-xs font-black bg-[#0A6E6E] text-white px-3 py-1.5 rounded-xl hover:bg-[#0A6E6E]/90 transition-all cursor-pointer"
-        >
-          Categories
-        </button>
-      </div>
-
-      {/* MOBILE DRAWER ACCORDION */}
-      {isMobileSidebarOpen && (
-        <div className="fixed inset-0 z-50 flex lg:hidden animate-in fade-in duration-100">
-          {/* Backdrop */}
-          <div 
-            className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs transition-opacity"
-            onClick={() => setIsMobileSidebarOpen(false)}
-          />
-
-          {/* Sliding drawer panel */}
-          <div className="relative w-80 max-w-xs bg-white h-full shadow-2xl flex flex-col justify-between p-6 z-10 overflow-y-auto animate-in slide-in-from-left duration-200">
-            <div className="flex flex-col gap-6">
-              <div className="flex justify-between items-center border-b border-slate-100 pb-3">
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 bg-[#0A6E6E] rounded-xl flex items-center justify-center text-white text-xs font-bold shadow-sm">
-                    🏥
-                  </div>
-                  <span className="text-sm font-extrabold text-[#0A6E6E]">Healthcare Center</span>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setIsMobileSidebarOpen(false)}
-                  className="p-1.5 hover:bg-slate-50 rounded-lg text-slate-400 hover:text-slate-900 cursor-pointer"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-              {renderSidebarContent()}
-            </div>
-            
-            <div className="border-t border-slate-100 pt-4 flex flex-col gap-2">
-              <span className="block text-[10px] font-bold text-slate-400 uppercase">Operational Audit Vow</span>
-              <span className="block text-[11px] text-slate-500 italic leading-relaxed">Assuring standard on-site clinical parameters and medical records.</span>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* DUAL-PANE WORKSPACE */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-        
-        {/* DESKTOP SIDEBAR COLUMN */}
-        <div className="hidden lg:block lg:col-span-3">
-          <div className="sticky top-24 bg-white border border-[#D1E5E5] rounded-3xl p-6 shadow-sm flex flex-col gap-6">
-            {renderSidebarContent()}
-          </div>
-        </div>
-
-        {/* WORKSPACE MIDDLE CONTENT SPACE */}
-        <div className="col-span-12 lg:col-span-9 space-y-6">
+    <DashboardLayout
+      currentView={currentView}
+      setView={setView}
+      userRole={userRole}
+      setUserRole={setUserRole}
+      userEmail={userEmail}
+      setUserEmail={setUserEmail}
+      notificationsCount={notificationsCount}
+      onOpenNotifications={onOpenNotifications}
+      sidebar={renderSidebarContent()}
+      activeTabTitle={
+        activeTab === 'overview' ? '📊 Dashboard Overview' :
+        activeTab === 'facilities' ? '🏥 Chambers & Settings' :
+        activeTab === 'doctors' ? '🩺 Clinical Practitioners' :
+        activeTab === 'staff' ? '👥 Nursing & Admin Staff' :
+        activeTab === 'appointments' ? '📅 Consult Book Logs' :
+        activeTab === 'patients' ? '🩹 Clinic Patient Index' :
+        activeTab === 'revenue' ? '💰 Account Revenue Ledger' : '🏥 Clinic Center'
+      }
+    >
+      <div className="space-y-6">
           
           {/* BANNER COMPONENT */}
           <div className="bg-white rounded-3xl border border-[#D1E5E5] p-6 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -1412,9 +1362,6 @@ export default function ClinicDashboard({
             </div>
           )}
 
-        </div>
-      </div>
-
       {/* WALK-IN APPOINTMENT DIRECT BOOK MODAL */}
       {showAddBookingModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 animate-in fade-in duration-100">
@@ -1960,6 +1907,7 @@ export default function ClinicDashboard({
         </div>
       )}
 
-    </div>
+      </div>
+    </DashboardLayout>
   );
 }

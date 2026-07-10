@@ -46,7 +46,45 @@ import { Smartphone, Download, X } from 'lucide-react';
 
 export default function App() {
   // Views Routing State
-  const [currentView, setView] = React.useState<string>('home');
+  const getInitialViewFromPath = (): string => {
+    const path = window.location.pathname;
+    if (path === '/' || path === '') {
+      return 'home';
+    } else if (path === '/admin/dashboard') {
+      return 'superadmin-dashboard';
+    } else if (path === '/partner/state/dashboard' || path === '/partner/district/dashboard' || path === '/partner/city/dashboard') {
+      return 'partner-dashboard';
+    } else if (path === '/doctor/dashboard') {
+      return 'doctor-dashboard';
+    } else if (path === '/clinic/dashboard') {
+      return 'clinic-dashboard';
+    } else if (path === '/patient/dashboard') {
+      return 'patient-dashboard';
+    } else {
+      const viewName = path.substring(1);
+      return viewName || 'home';
+    }
+  };
+
+  const [currentView, _setView] = React.useState<string>(getInitialViewFromPath);
+  const nextTransitionReplace = React.useRef(false);
+  const prevViewRef = React.useRef<string>(currentView);
+  const isPopStateRef = React.useRef(false);
+
+  const setView = (view: string | { name: string; replace?: boolean }, replaceOption?: boolean) => {
+    if (typeof view === 'object') {
+      if (view.replace) {
+        nextTransitionReplace.current = true;
+      }
+      _setView(view.name);
+    } else {
+      if (replaceOption) {
+        nextTransitionReplace.current = true;
+      }
+      _setView(view);
+    }
+  };
+
   const [selectedDoctorId, setSelectedDoctorId] = React.useState<string | null>(null);
   const [selectedRoomId, setSelectedRoomId] = React.useState<string | null>(null);
   
@@ -59,9 +97,29 @@ export default function App() {
   const [selectedBookingDate, setSelectedBookingDate] = React.useState<string>('');
   const [selectedBookingSlot, setSelectedBookingSlot] = React.useState<string>('');
 
-  // Authentication State (For demonstration)
-  const [userRole, setUserRole] = React.useState<Role | null>(null);
-  const [userEmail, setUserEmail] = React.useState<string | null>(null);
+  // Authentication State
+  const [userRole, _setUserRole] = React.useState<Role | null>(null);
+  const [userEmail, _setUserEmail] = React.useState<string | null>(null);
+
+  const setUserRole = (role: Role | null) => {
+    _setUserRole(role);
+    if (role) {
+      localStorage.setItem('ds_cached_role', role);
+    } else {
+      localStorage.removeItem('ds_cached_role');
+    }
+  };
+
+  const setUserEmail = (email: string | null) => {
+    _setUserEmail(email);
+    if (email) {
+      localStorage.setItem('ds_cached_email', email);
+    } else {
+      localStorage.removeItem('ds_cached_email');
+    }
+  };
+
+  const [loadingSession, setLoadingSession] = React.useState(true);
 
   // Core Data State (allows adding, deleting, updating doctors and appointments interactively!)
   const [appointments, setAppointments] = React.useState<Appointment[]>(() => {
@@ -93,48 +151,58 @@ export default function App() {
     localStorage.setItem('ds_clinics', JSON.stringify(clinics));
   }, [clinics]);
 
-  // Restore active Supabase session and sync terms on initial mount
+  // Centralized Authentication and Session Restoration on Initial Mount
   React.useEffect(() => {
-    async function restoreSession() {
+    let active = true;
+    async function initAuth() {
       try {
         const supabaseUrl = (import.meta as any).env?.VITE_SUPABASE_URL;
-        if (supabaseUrl && !supabaseUrl.includes('placeholder')) {
+        const hasSupabase = supabaseUrl && !supabaseUrl.includes('placeholder');
+
+        if (hasSupabase) {
           console.log('App mounting: Restoring Supabase session...');
           const { data: { session } } = await supabase.auth.getSession();
-          if (session?.user) {
+          if (session?.user && active) {
             const email = session.user.email;
             if (email) {
               const roleResult = await getUserRoleFromSupabase(email);
-              if (roleResult) {
+              if (roleResult && active) {
                 const resolvedRole = roleResult.role as Role;
                 setUserRole(resolvedRole);
                 setUserEmail(email);
                 console.log('Restored session for:', email, 'Role:', resolvedRole);
                 
                 // Fetch and sync terms logs if they exist on the Supabase profile
-                const { data: profileData } = await supabase
-                  .from('profiles')
-                  .select('terms_accepted, accepted_terms_version, accepted_terms_at, name')
-                  .eq('email', email.trim().toLowerCase())
-                  .maybeSingle();
-                
-                if (profileData && profileData.terms_accepted && profileData.accepted_terms_version) {
-                  const logs = getTermsAcceptanceLogs();
-                  const alreadyLogged = logs.some(
-                    l => l.userEmail.toLowerCase() === email.toLowerCase() && 
-                         l.registrationType === 'patient' && 
-                         l.acceptedVersion === profileData.accepted_terms_version
-                  );
-                  if (!alreadyLogged) {
-                    logTermsAcceptance(
-                      email,
-                      profileData.name || email.split('@')[0],
-                      'patient',
-                      profileData.accepted_terms_version
+                try {
+                  const { data: profileData } = await supabase
+                    .from('profiles')
+                    .select('terms_accepted, accepted_terms_version, accepted_terms_at, name')
+                    .eq('email', email.trim().toLowerCase())
+                    .maybeSingle();
+                  
+                  if (profileData && profileData.terms_accepted && profileData.accepted_terms_version && active) {
+                    const logs = getTermsAcceptanceLogs();
+                    const alreadyLogged = logs.some(
+                      l => l.userEmail.toLowerCase() === email.toLowerCase() && 
+                           l.registrationType === 'patient' && 
+                           l.acceptedVersion === profileData.accepted_terms_version
                     );
-                    console.log('Synced restored terms acceptance from profiles table.');
+                    if (!alreadyLogged) {
+                      logTermsAcceptance(
+                        email,
+                        profileData.name || email.split('@')[0],
+                        'patient',
+                        profileData.accepted_terms_version
+                      );
+                      console.log('Synced restored terms acceptance from profiles table.');
+                    }
                   }
+                } catch (termsSyncErr) {
+                  console.warn('Failed to sync terms from Supabase:', termsSyncErr);
                 }
+                
+                setLoadingSession(false);
+                return;
               }
             }
           }
@@ -142,8 +210,57 @@ export default function App() {
       } catch (err) {
         console.error('Failed to restore Supabase session on mount:', err);
       }
+
+      // Fallback to local storage cached session (useful for offline, local test, or fast loading)
+      if (active) {
+        const cachedRole = localStorage.getItem('ds_cached_role');
+        const cachedEmail = localStorage.getItem('ds_cached_email');
+        if (cachedRole && cachedEmail) {
+          setUserRole(cachedRole as Role);
+          setUserEmail(cachedEmail);
+          console.log('Session restored from cache:', cachedEmail, cachedRole);
+        }
+        setLoadingSession(false);
+      }
     }
-    restoreSession();
+
+    initAuth();
+
+    // Listen for authentication state changes to avoid redirect loops and race conditions
+    const supabaseUrl = (import.meta as any).env?.VITE_SUPABASE_URL;
+    const hasSupabase = supabaseUrl && !supabaseUrl.includes('placeholder');
+    let subscription: any = null;
+
+    if (hasSupabase) {
+      const subRes = supabase.auth.onAuthStateChange(async (event, session) => {
+        console.log('Supabase Auth State Changed:', event, session?.user?.email);
+        if (!active) return;
+        if (session?.user) {
+          const email = session.user.email;
+          if (email) {
+            const roleResult = await getUserRoleFromSupabase(email);
+            if (roleResult && active) {
+              const resolvedRole = roleResult.role as Role;
+              setUserRole(resolvedRole);
+              setUserEmail(email);
+            }
+          }
+        } else if (event === 'SIGNED_OUT') {
+          if (active) {
+            setUserRole(null);
+            setUserEmail(null);
+          }
+        }
+      });
+      subscription = subRes.data?.subscription;
+    }
+
+    return () => {
+      active = false;
+      if (subscription) {
+        subscription.unsubscribe();
+      }
+    };
   }, []);
 
   // Synchronize state from localStorage whenever view changes, ensuring partner/superadmin updates are immediately seen!
@@ -242,31 +359,50 @@ export default function App() {
 
   // Role-Based Access Control (RBAC) Protection
   const getAuthorizedView = (view: string): string => {
-    if (view === 'superadmin-dashboard' && userRole !== 'superadmin') {
-      return userRole ? `${userRole}-dashboard` : 'login';
+    if (loadingSession) {
+      return view;
     }
-    if (view === 'partner-dashboard' && userRole !== 'partner') {
-      return userRole ? `${userRole}-dashboard` : 'login';
+
+    const roleDashboards: Record<string, string> = {
+      'superadmin-dashboard': 'superadmin',
+      'partner-dashboard': 'partner',
+      'doctor-dashboard': 'doctor',
+      'clinic-dashboard': 'clinic',
+      'patient-dashboard': 'patient',
+      'pharmacy-dashboard': 'pharmacy',
+      'laboratory-dashboard': 'laboratory',
+      'physiotherapy-dashboard': 'physiotherapy'
+    };
+
+    const requiredRole = roleDashboards[view];
+    if (requiredRole) {
+      if (userRole !== requiredRole) {
+        return userRole ? `${userRole}-dashboard` : (requiredRole === 'partner' ? 'partner-login' : 'login');
+      }
     }
-    if (view === 'doctor-dashboard' && userRole !== 'doctor') {
-      return userRole ? `${userRole}-dashboard` : 'login';
+
+    if (isLoginView(view) && userRole) {
+      return `${userRole}-dashboard`;
     }
-    if (view === 'clinic-dashboard' && userRole !== 'clinic') {
-      return userRole ? `${userRole}-dashboard` : 'login';
-    }
-    if (view === 'patient-dashboard' && userRole !== 'patient') {
-      return userRole ? `${userRole}-dashboard` : 'login';
-    }
-    if (view === 'pharmacy-dashboard' && userRole !== 'pharmacy') {
-      return userRole ? `${userRole}-dashboard` : 'login';
-    }
-    if (view === 'laboratory-dashboard' && userRole !== 'laboratory') {
-      return userRole ? `${userRole}-dashboard` : 'login';
-    }
-    if (view === 'physiotherapy-dashboard' && userRole !== 'physiotherapy') {
-      return userRole ? `${userRole}-dashboard` : 'login';
-    }
+
     return view;
+  };
+
+  const isDashboardView = (v: string): boolean => {
+    return [
+      'superadmin-dashboard',
+      'partner-dashboard',
+      'doctor-dashboard',
+      'clinic-dashboard',
+      'patient-dashboard',
+      'pharmacy-dashboard',
+      'laboratory-dashboard',
+      'physiotherapy-dashboard'
+    ].includes(v);
+  };
+
+  const isLoginView = (v: string): boolean => {
+    return ['login', 'partner-login'].includes(v);
   };
 
   // Enforce authorized view state
@@ -275,13 +411,31 @@ export default function App() {
     if (authView !== currentView) {
       setView(authView);
     }
-  }, [currentView, userRole]);
+  }, [currentView, userRole, loadingSession]);
 
   // Push real URL path to browser for role-based dashboard navigation
   React.useEffect(() => {
     const authorizedView = getAuthorizedView(currentView);
+    const prevView = prevViewRef.current;
+    
+    const isPopState = isPopStateRef.current;
+    isPopStateRef.current = false;
+    
+    let useReplace = nextTransitionReplace.current;
+    nextTransitionReplace.current = false;
+    
+    if (
+      (isLoginView(prevView) && isDashboardView(authorizedView)) ||
+      (isDashboardView(prevView) && isLoginView(authorizedView))
+    ) {
+      useReplace = true;
+    }
+    
+    prevViewRef.current = authorizedView;
+
+    let targetUrl = '/';
     if (authorizedView === 'superadmin-dashboard') {
-      window.history.pushState(null, '', '/admin/dashboard');
+      targetUrl = '/admin/dashboard';
     } else if (authorizedView === 'partner-dashboard') {
       const savedPartners = localStorage.getItem('ds_partners');
       const pList = savedPartners ? JSON.parse(savedPartners) : [];
@@ -290,30 +444,45 @@ export default function App() {
       const partnerType = currentPartner?.partnerType || 'District';
       
       if (partnerType === 'State') {
-        window.history.pushState(null, '', '/partner/state/dashboard');
+        targetUrl = '/partner/state/dashboard';
       } else if (partnerType === 'City') {
-        window.history.pushState(null, '', '/partner/city/dashboard');
+        targetUrl = '/partner/city/dashboard';
       } else {
-        window.history.pushState(null, '', '/partner/district/dashboard');
+        targetUrl = '/partner/district/dashboard';
       }
     } else if (authorizedView === 'doctor-dashboard') {
-      window.history.pushState(null, '', '/doctor/dashboard');
+      targetUrl = '/doctor/dashboard';
     } else if (authorizedView === 'clinic-dashboard') {
-      window.history.pushState(null, '', '/clinic/dashboard');
+      targetUrl = '/clinic/dashboard';
     } else if (authorizedView === 'patient-dashboard') {
-      window.history.pushState(null, '', '/patient/dashboard');
+      targetUrl = '/patient/dashboard';
     } else if (authorizedView === 'home') {
-      window.history.pushState(null, '', '/');
+      targetUrl = '/';
     } else if (authorizedView === 'login') {
-      window.history.pushState(null, '', '/login');
+      targetUrl = '/login';
     } else {
-      window.history.pushState(null, '', `/${authorizedView}`);
+      targetUrl = `/${authorizedView}`;
     }
-  }, [currentView, userRole, userEmail]);
+
+    if (!isPopState) {
+      if (window.location.pathname !== targetUrl) {
+        if (useReplace) {
+          window.history.replaceState(null, '', targetUrl);
+        } else {
+          window.history.pushState(null, '', targetUrl);
+        }
+      }
+    } else {
+      if (window.location.pathname !== targetUrl) {
+        window.history.replaceState(null, '', targetUrl);
+      }
+    }
+  }, [currentView, userRole, userEmail, loadingSession]);
 
   // Support for browser Back and Forward button navigation
   React.useEffect(() => {
     const handlePopState = () => {
+      isPopStateRef.current = true;
       const path = window.location.pathname;
       if (path === '/' || path === '') {
         setView('home');
@@ -508,12 +677,31 @@ export default function App() {
           <PartnerDashboard 
             setView={setView}
             userEmail={userEmail}
+            currentView={currentView}
+            userRole={userRole}
+            setUserRole={setUserRole}
+            setUserEmail={setUserEmail}
+            notificationsCount={unreadNotificationsCount}
+            onOpenNotifications={() => {
+              setShowNotifications(!showNotifications);
+              handleMarkNotificationsRead();
+            }}
           />
         );
       case 'superadmin-dashboard':
         return (
           <SuperAdminDashboard 
             setView={setView}
+            userEmail={userEmail}
+            currentView={currentView}
+            userRole={userRole}
+            setUserRole={setUserRole}
+            setUserEmail={setUserEmail}
+            notificationsCount={unreadNotificationsCount}
+            onOpenNotifications={() => {
+              setShowNotifications(!showNotifications);
+              handleMarkNotificationsRead();
+            }}
           />
         );
       case 'patient-dashboard':
@@ -524,6 +712,15 @@ export default function App() {
             setSelectedDoctorId={setSelectedDoctorId}
             setSelectedRoomId={setSelectedRoomId}
             userEmail={userEmail}
+            currentView={currentView}
+            userRole={userRole}
+            setUserRole={setUserRole}
+            setUserEmail={setUserEmail}
+            notificationsCount={unreadNotificationsCount}
+            onOpenNotifications={() => {
+              setShowNotifications(!showNotifications);
+              handleMarkNotificationsRead();
+            }}
           />
         );
       case 'doctor-dashboard':
@@ -536,6 +733,15 @@ export default function App() {
             setSelectedRoomId={setSelectedRoomId}
             userEmail={userEmail}
             doctorsList={doctors}
+            currentView={currentView}
+            userRole={userRole}
+            setUserRole={setUserRole}
+            setUserEmail={setUserEmail}
+            notificationsCount={unreadNotificationsCount}
+            onOpenNotifications={() => {
+              setShowNotifications(!showNotifications);
+              handleMarkNotificationsRead();
+            }}
           />
         );
       case 'clinic-dashboard':
@@ -548,6 +754,15 @@ export default function App() {
             userEmail={userEmail}
             onAddDoctor={handleAddDoctor}
             onRemoveDoctor={handleRemoveDoctor}
+            currentView={currentView}
+            userRole={userRole}
+            setUserRole={setUserRole}
+            setUserEmail={setUserEmail}
+            notificationsCount={unreadNotificationsCount}
+            onOpenNotifications={() => {
+              setShowNotifications(!showNotifications);
+              handleMarkNotificationsRead();
+            }}
           />
         );
       case 'pharmacy-dashboard':
@@ -555,6 +770,15 @@ export default function App() {
           <PharmacyDashboard 
             setView={setView} 
             userEmail={userEmail || ''}
+            currentView={currentView}
+            userRole={userRole}
+            setUserRole={setUserRole}
+            setUserEmail={setUserEmail}
+            notificationsCount={unreadNotificationsCount}
+            onOpenNotifications={() => {
+              setShowNotifications(!showNotifications);
+              handleMarkNotificationsRead();
+            }}
           />
         );
       case 'laboratory-dashboard':
@@ -562,6 +786,15 @@ export default function App() {
           <LaboratoryDashboard 
             setView={setView} 
             userEmail={userEmail || ''}
+            currentView={currentView}
+            userRole={userRole}
+            setUserRole={setUserRole}
+            setUserEmail={setUserEmail}
+            notificationsCount={unreadNotificationsCount}
+            onOpenNotifications={() => {
+              setShowNotifications(!showNotifications);
+              handleMarkNotificationsRead();
+            }}
           />
         );
       case 'physiotherapy-dashboard':
@@ -569,6 +802,15 @@ export default function App() {
           <PhysiotherapyDashboard 
             setView={setView} 
             userEmail={userEmail || ''}
+            currentView={currentView}
+            userRole={userRole}
+            setUserRole={setUserRole}
+            setUserEmail={setUserEmail}
+            notificationsCount={unreadNotificationsCount}
+            onOpenNotifications={() => {
+              setShowNotifications(!showNotifications);
+              handleMarkNotificationsRead();
+            }}
           />
         );
       case 'booking':
@@ -651,6 +893,17 @@ export default function App() {
   };
 
   const annProps = getAnnouncementBarProps();
+
+  if (loadingSession) {
+    return (
+      <div className="min-h-screen bg-[#F0F7F7] flex items-center justify-center font-sans" id="app-loading">
+        <div className="flex flex-col items-center space-y-4">
+          <div className="w-12 h-12 border-4 border-[#0A6E6E] border-t-transparent rounded-full animate-spin"></div>
+          <p className="text-sm font-bold text-gray-500 animate-pulse">Restoring secure session...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#F0F7F7] text-[#1A2B3C] font-sans flex flex-col relative" id="app-root">

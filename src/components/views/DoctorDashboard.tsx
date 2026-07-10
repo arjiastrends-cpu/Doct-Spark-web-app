@@ -5,8 +5,9 @@
 
 import React from 'react';
 import { Calendar, CheckCircle2, IndianRupee, Heart, PlusCircle, User, Award, ShieldCheck, ArrowRight, Video, ClipboardList, Upload, X, FileText, Image as ImageIcon } from 'lucide-react';
-import { Appointment, Prescription, Doctor } from '../../types';
+import { Appointment, Prescription, Doctor, Role } from '../../types';
 import { creditPatientWallet } from '../../data/walletUtils';
+import DashboardLayout from '../layout/DashboardLayout';
 
 interface DoctorDashboardProps {
   setView: (view: string) => void;
@@ -16,6 +17,12 @@ interface DoctorDashboardProps {
   setSelectedRoomId: (id: string | null) => void;
   userEmail?: string | null;
   doctorsList?: Doctor[];
+  currentView: string;
+  userRole: Role | null;
+  setUserRole: (role: Role | null) => void;
+  setUserEmail: (email: string | null) => void;
+  notificationsCount: number;
+  onOpenNotifications: () => void;
 }
 
 export default function DoctorDashboard({
@@ -25,7 +32,13 @@ export default function DoctorDashboard({
   onAddAppointment,
   setSelectedRoomId,
   userEmail,
-  doctorsList
+  doctorsList,
+  currentView,
+  userRole,
+  setUserRole,
+  setUserEmail,
+  notificationsCount,
+  onOpenNotifications
 }: DoctorDashboardProps) {
   // Resolve current doctor dynamically
   const currentDoctor = React.useMemo(() => {
@@ -401,8 +414,215 @@ export default function DoctorDashboard({
     setView('video-call');
   };
 
+  const renderSidebarContent = () => {
+    return (
+      <aside className="flex flex-col gap-6" id="doctor-earnings-sidebar">
+        {/* EARNINGS SUMMARY CARD */}
+        <div className="bg-white border-2 border-[#D1E5E5] rounded-xl p-5 shadow-sm">
+          <h3 className="text-xs font-extrabold text-[#1A2B3C] uppercase tracking-widest mb-3 border-b border-gray-100 pb-2">
+            Financial Payout Portal
+          </h3>
+
+          <div className="flex flex-col gap-4 text-xs font-semibold text-gray-600 mb-5">
+            <div className="flex justify-between">
+              <span>Month's Gross Consultation Fees:</span>
+              <strong className="text-[#1A2B3C]">₹{monthlyEarnings.toLocaleString()}</strong>
+            </div>
+            <div className="flex justify-between">
+              <span>Platform Maintenance Fee (10%):</span>
+              <strong className="text-red-500">-₹{Math.round(monthlyEarnings * 0.1).toLocaleString()}</strong>
+            </div>
+            <div className="border-t border-gray-100 pt-3.5 flex justify-between text-sm font-extrabold text-[#1A2B3C]">
+              <span>Withdrawable Balance:</span>
+              <span className="text-[#0A6E6E]">₹{pendingWithdrawal.toLocaleString()}</span>
+            </div>
+          </div>
+
+          <button
+            onClick={handleWithdrawFunds}
+            className="w-full py-2.5 bg-[#0A6E6E] hover:bg-[#0A6E6E]/95 text-white text-xs font-extrabold rounded-lg shadow"
+          >
+            Withdraw Funds Now
+          </button>
+        </div>
+
+        {/* DOCTOR CLINIC TIMINGS - MY SCHEDULE BUILDER */}
+        <div className="bg-white border border-[#D1E5E5] rounded-xl p-5 shadow-sm">
+          <div className="flex justify-between items-center mb-3.5 border-b border-gray-100 pb-2">
+            <h3 className="text-xs font-extrabold text-[#1A2B3C] uppercase tracking-widest">
+              My Schedule Builder
+            </h3>
+            {!isEditingSchedule && (
+              <button
+                onClick={() => setIsEditingSchedule(true)}
+                className="text-[10px] text-[#0A6E6E] font-extrabold hover:underline flex items-center gap-1 cursor-pointer font-sans"
+              >
+                ⚙️ Edit Timings
+              </button>
+            )}
+          </div>
+
+          {isEditingSchedule ? (
+            <div className="space-y-4 font-sans">
+              {/* Working Days Selection */}
+              <div>
+                <label className="block text-[10px] font-extrabold text-[#1A2B3C] uppercase tracking-wider mb-1.5">
+                  Working Days
+                </label>
+                <div className="flex flex-wrap gap-1">
+                  {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(day => {
+                    const isActive = workingDays.includes(day);
+                    return (
+                      <button
+                        key={day}
+                        type="button"
+                        onClick={() => toggleWorkingDay(day)}
+                        className={`px-2.5 py-1 rounded-md text-[10px] font-extrabold transition-all border cursor-pointer ${
+                          isActive
+                            ? 'bg-[#0A6E6E] text-white border-[#0A6E6E]'
+                            : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300'
+                        }`}
+                      >
+                        {day}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Hours Settings */}
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-[10px] font-extrabold text-[#1A2B3C] uppercase tracking-wider mb-1">
+                    Start Hour
+                  </label>
+                  <input
+                    type="time"
+                    value={startHour}
+                    onChange={(e) => setStartHour(e.target.value)}
+                    className="w-full bg-[#F0F7F7] border border-[#D1E5E5] px-2.5 py-1.5 rounded-lg text-xs font-semibold text-[#1A2B3C] outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-extrabold text-[#1A2B3C] uppercase tracking-wider mb-1">
+                    End Hour
+                  </label>
+                  <input
+                    type="time"
+                    value={endHour}
+                    onChange={(e) => setEndHour(e.target.value)}
+                    className="w-full bg-[#F0F7F7] border border-[#D1E5E5] px-2.5 py-1.5 rounded-lg text-xs font-semibold text-[#1A2B3C] outline-none"
+                  />
+                </div>
+              </div>
+
+              {/* Duration dropdown */}
+              <div>
+                <label className="block text-[10px] font-extrabold text-[#1A2B3C] uppercase tracking-wider mb-1">
+                  Consultation Duration
+                </label>
+                <select
+                  value={consultationDuration}
+                  onChange={(e) => setConsultationDuration(Number(e.target.value))}
+                  className="w-full bg-[#F0F7F7] border border-[#D1E5E5] px-2.5 py-1.5 rounded-lg text-xs font-bold text-[#1A2B3C] outline-none cursor-pointer"
+                >
+                  <option value={15}>15 Minutes</option>
+                  <option value={20}>20 Minutes</option>
+                  <option value={30}>30 Minutes</option>
+                  <option value={45}>45 Minutes</option>
+                  <option value={60}>60 Minutes</option>
+                </select>
+              </div>
+
+              {/* Real-time Slots Preview counts */}
+              <div className="bg-[#F0F7F7] border border-[#D1E5E5] p-2.5 rounded-lg">
+                <div className="flex justify-between items-center text-[10px] font-extrabold text-[#0A6E6E]">
+                  <span>Generated Daily Slots:</span>
+                  <span>{generatedSlots.length} Slots</span>
+                </div>
+                {generatedSlots.length > 0 && (
+                  <div className="mt-1.5 max-h-24 overflow-y-auto border-t border-teal-100 pt-1.5 space-y-1 pr-1">
+                    {generatedSlots.map((slot, idx) => (
+                      <div key={idx} className="text-[9px] text-gray-500 font-mono text-center">
+                        {slot}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Save and Cancel buttons */}
+              <div className="flex gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={() => setIsEditingSchedule(false)}
+                  className="flex-1 py-1.5 border border-[#D1E5E5] text-gray-500 text-xs font-extrabold rounded-lg hover:bg-gray-50 cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsEditingSchedule(false);
+                  }}
+                  className="flex-1 py-1.5 bg-[#0A6E6E] text-white text-xs font-extrabold rounded-lg shadow hover:bg-[#0A6E6E]/90 cursor-pointer"
+                >
+                  Save Slots
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-3 text-xs font-medium text-gray-600 font-sans">
+              <div className="flex justify-between">
+                <span>Working Days:</span>
+                <strong className="text-gray-900">{workingDays.join(', ')}</strong>
+              </div>
+              <div className="flex justify-between">
+                <span>Hours of Duty:</span>
+                <strong className="text-gray-900">
+                  {formatTime12h(startHour)} - {formatTime12h(endHour)}
+                </strong>
+              </div>
+              <div className="flex justify-between">
+                <span>Consultation Unit:</span>
+                <strong className="text-[#0A6E6E]">{consultationDuration} minutes</strong>
+              </div>
+              <div className="flex justify-between items-center border-t border-gray-100 pt-2 text-[11px] font-bold">
+                <span>Total Daily Slots:</span>
+                <span className="bg-teal-50 text-[#0A6E6E] px-2 py-0.5 rounded-full font-extrabold">
+                  {generatedSlots.length} Slots
+                </span>
+              </div>
+              {generatedSlots.length > 0 && (
+                <div className="mt-1 max-h-28 overflow-y-auto border border-gray-100 rounded-md p-2 space-y-1 bg-gray-50/50">
+                  <p className="text-[9px] text-gray-400 uppercase tracking-wider font-extrabold text-center mb-1">Active Generated Grid</p>
+                  {generatedSlots.map((slot, idx) => (
+                    <div key={idx} className="text-[9px] text-gray-500 font-mono text-center">
+                      {slot}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </aside>
+    );
+  };
+
   return (
-    <div className="flex-1 max-w-7xl w-full mx-auto px-4 md:px-8 py-8" id="doctor-dashboard-root">
+    <DashboardLayout
+      currentView={currentView}
+      setView={setView}
+      userRole={userRole}
+      setUserRole={setUserRole}
+      userEmail={userEmail}
+      setUserEmail={setUserEmail}
+      notificationsCount={notificationsCount}
+      onOpenNotifications={onOpenNotifications}
+      sidebar={renderSidebarContent()}
+      activeTabTitle="🩺 Doctor Schedule Workspace"
+    >
       
       {/* Header Profile Completion indicator */}
       <div className="bg-white rounded-xl border border-[#D1E5E5] p-5 mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -465,12 +685,8 @@ export default function DoctorDashboard({
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        
-        {/* LEFT/MIDDLE COLUMNS: schedule timeline & pending prescription actions */}
-        <div className="lg:col-span-2 flex flex-col gap-8">
-                 {/* APPOINTMENT SCHEDULE TIMELINE WITH RESCHEDULING */}
-          <div>
+      {/* APPOINTMENT SCHEDULE TIMELINE WITH RESCHEDULING */}
+      <div>
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-4">
               <h2 className="text-xs font-extrabold text-[#1A2B3C] uppercase tracking-widest">
                 Appointment Schedule Timeline
@@ -682,208 +898,6 @@ export default function DoctorDashboard({
               </div>
             )}
           </div>
-
-        </div>
-
-        {/* RIGHT COLUMN: earnings summary & quick links */}
-        <aside className="flex flex-col gap-6" id="doctor-earnings-sidebar">
-          
-
-
-          {/* EARNINGS SUMMARY CARD */}
-          <div className="bg-white border-2 border-[#D1E5E5] rounded-xl p-5 shadow-sm">
-            <h3 className="text-xs font-extrabold text-[#1A2B3C] uppercase tracking-widest mb-3 border-b border-gray-100 pb-2">
-              Financial Payout Portal
-            </h3>
-
-            <div className="flex flex-col gap-4 text-xs font-semibold text-gray-600 mb-5">
-              <div className="flex justify-between">
-                <span>Month's Gross Consultation Fees:</span>
-                <strong className="text-[#1A2B3C]">₹{monthlyEarnings.toLocaleString()}</strong>
-              </div>
-              <div className="flex justify-between">
-                <span>Platform Maintenance Fee (10%):</span>
-                <strong className="text-red-500">-₹{Math.round(monthlyEarnings * 0.1).toLocaleString()}</strong>
-              </div>
-              <div className="border-t border-gray-100 pt-3.5 flex justify-between text-sm font-extrabold text-[#1A2B3C]">
-                <span>Withdrawable Balance:</span>
-                <span className="text-[#0A6E6E]">₹{pendingWithdrawal.toLocaleString()}</span>
-              </div>
-            </div>
-
-            <button
-              onClick={handleWithdrawFunds}
-              className="w-full py-2.5 bg-[#0A6E6E] hover:bg-[#0A6E6E]/95 text-white text-xs font-extrabold rounded-lg shadow"
-            >
-              Withdraw Funds Now
-            </button>
-          </div>
-
-          {/* DOCTOR CLINIC TIMINGS - MY SCHEDULE BUILDER */}
-          <div className="bg-white border border-[#D1E5E5] rounded-xl p-5 shadow-sm">
-            <div className="flex justify-between items-center mb-3.5 border-b border-gray-100 pb-2">
-              <h3 className="text-xs font-extrabold text-[#1A2B3C] uppercase tracking-widest">
-                My Schedule Builder
-              </h3>
-              {!isEditingSchedule && (
-                <button
-                  onClick={() => setIsEditingSchedule(true)}
-                  className="text-[10px] text-[#0A6E6E] font-extrabold hover:underline flex items-center gap-1 cursor-pointer"
-                >
-                  ⚙️ Edit Timings
-                </button>
-              )}
-            </div>
-
-            {isEditingSchedule ? (
-              <div className="space-y-4">
-                {/* Working Days Selection */}
-                <div>
-                  <label className="block text-[10px] font-extrabold text-[#1A2B3C] uppercase tracking-wider mb-1.5">
-                    Working Days
-                  </label>
-                  <div className="flex flex-wrap gap-1">
-                    {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(day => {
-                      const isActive = workingDays.includes(day);
-                      return (
-                        <button
-                          key={day}
-                          type="button"
-                          onClick={() => toggleWorkingDay(day)}
-                          className={`px-2.5 py-1 rounded-md text-[10px] font-extrabold transition-all border cursor-pointer ${
-                            isActive
-                              ? 'bg-[#0A6E6E] text-white border-[#0A6E6E]'
-                              : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300'
-                          }`}
-                        >
-                          {day}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* Hours Settings */}
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <label className="block text-[10px] font-extrabold text-[#1A2B3C] uppercase tracking-wider mb-1">
-                      Start Hour
-                    </label>
-                    <input
-                      type="time"
-                      value={startHour}
-                      onChange={(e) => setStartHour(e.target.value)}
-                      className="w-full bg-[#F0F7F7] border border-[#D1E5E5] px-2.5 py-1.5 rounded-lg text-xs font-semibold text-[#1A2B3C] outline-none"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] font-extrabold text-[#1A2B3C] uppercase tracking-wider mb-1">
-                      End Hour
-                    </label>
-                    <input
-                      type="time"
-                      value={endHour}
-                      onChange={(e) => setEndHour(e.target.value)}
-                      className="w-full bg-[#F0F7F7] border border-[#D1E5E5] px-2.5 py-1.5 rounded-lg text-xs font-semibold text-[#1A2B3C] outline-none"
-                    />
-                  </div>
-                </div>
-
-                {/* Duration dropdown */}
-                <div>
-                  <label className="block text-[10px] font-extrabold text-[#1A2B3C] uppercase tracking-wider mb-1">
-                    Consultation Duration
-                  </label>
-                  <select
-                    value={consultationDuration}
-                    onChange={(e) => setConsultationDuration(Number(e.target.value))}
-                    className="w-full bg-[#F0F7F7] border border-[#D1E5E5] px-2.5 py-1.5 rounded-lg text-xs font-bold text-[#1A2B3C] outline-none cursor-pointer"
-                  >
-                    <option value={15}>15 Minutes</option>
-                    <option value={20}>20 Minutes</option>
-                    <option value={30}>30 Minutes</option>
-                    <option value={45}>45 Minutes</option>
-                    <option value={60}>60 Minutes</option>
-                  </select>
-                </div>
-
-                {/* Real-time Slots Preview counts */}
-                <div className="bg-[#F0F7F7] border border-[#D1E5E5] p-2.5 rounded-lg">
-                  <div className="flex justify-between items-center text-[10px] font-extrabold text-[#0A6E6E]">
-                    <span>Generated Daily Slots:</span>
-                    <span>{generatedSlots.length} Slots</span>
-                  </div>
-                  {generatedSlots.length > 0 && (
-                    <div className="mt-1.5 max-h-24 overflow-y-auto border-t border-teal-100 pt-1.5 space-y-1 pr-1">
-                      {generatedSlots.map((slot, idx) => (
-                        <div key={idx} className="text-[9px] text-gray-500 font-mono text-center">
-                          {slot}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                {/* Save and Cancel buttons */}
-                <div className="flex gap-2 pt-1">
-                  <button
-                    type="button"
-                    onClick={() => setIsEditingSchedule(false)}
-                    className="flex-1 py-1.5 border border-[#D1E5E5] text-gray-500 text-xs font-extrabold rounded-lg hover:bg-gray-50 cursor-pointer"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsEditingSchedule(false);
-                      alert("Successfully updated & re-generated clinic appointment schedule matrix!");
-                    }}
-                    className="flex-1 py-1.5 bg-[#0A6E6E] text-white text-xs font-extrabold rounded-lg shadow hover:bg-[#0A6E6E]/90 cursor-pointer"
-                  >
-                    Save Slots
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <div className="space-y-3 text-xs font-medium text-gray-600">
-                <div className="flex justify-between">
-                  <span>Working Days:</span>
-                  <strong className="text-gray-900">{workingDays.join(', ')}</strong>
-                </div>
-                <div className="flex justify-between">
-                  <span>Hours of Duty:</span>
-                  <strong className="text-gray-900">
-                    {formatTime12h(startHour)} - {formatTime12h(endHour)}
-                  </strong>
-                </div>
-                <div className="flex justify-between">
-                  <span>Consultation Unit:</span>
-                  <strong className="text-[#0A6E6E]">{consultationDuration} minutes</strong>
-                </div>
-                <div className="flex justify-between items-center border-t border-gray-100 pt-2 text-[11px] font-bold">
-                  <span>Total Daily Slots:</span>
-                  <span className="bg-teal-50 text-[#0A6E6E] px-2 py-0.5 rounded-full font-extrabold">
-                    {generatedSlots.length} Slots
-                  </span>
-                </div>
-                {generatedSlots.length > 0 && (
-                  <div className="mt-1 max-h-28 overflow-y-auto border border-gray-100 rounded-md p-2 space-y-1 bg-gray-50/50">
-                    <p className="text-[9px] text-gray-400 uppercase tracking-wider font-extrabold text-center mb-1">Active Generated Grid</p>
-                    {generatedSlots.map((slot, idx) => (
-                      <div key={idx} className="text-[9px] text-gray-500 font-mono text-center">
-                        {slot}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-
-        </aside>
-
-      </div>
 
       {/* WRITE PRESCRIPTION DIALOG / MODAL FORM */}
       {activePrescribeApt && (
@@ -1471,6 +1485,6 @@ export default function DoctorDashboard({
         );
       })()}
 
-    </div>
+    </DashboardLayout>
   );
 }
