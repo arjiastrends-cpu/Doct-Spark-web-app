@@ -221,8 +221,26 @@ export async function saveAppointmentToSupabase(apt: Appointment, doctor: any) {
  *   email TEXT UNIQUE NOT NULL,
  *   role TEXT NOT NULL DEFAULT 'patient', -- 'superadmin', 'state_partner', 'district_partner', 'city_partner', 'patient', 'doctor', 'clinic'
  *   partner_type TEXT, -- 'State', 'District', 'City' (if role is partner)
+ *   name TEXT,
+ *   full_name TEXT,
+ *   terms_accepted BOOLEAN DEFAULT FALSE,
+ *   accepted_terms_version TEXT,
+ *   accepted_terms_at TIMESTAMP WITH TIME ZONE,
  *   created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
  * );
+ * 
+ * -- Enable Row Level Security (RLS) on Profiles:
+ * ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
+ * 
+ * -- RLS Policies for Profiles (Fixes updates and select checks):
+ * CREATE POLICY "Users can view own profile" ON profiles
+ *   FOR SELECT USING (auth.uid() = id);
+ * 
+ * CREATE POLICY "Users can update own profile" ON profiles
+ *   FOR UPDATE USING (auth.uid() = id) WITH CHECK (auth.uid() = id);
+ * 
+ * CREATE POLICY "Enable insert for authenticated users only" ON profiles
+ *   FOR INSERT WITH CHECK (auth.uid() = id);
  * 
  * -- Trigger to automatically create a profile when a new user signs up in Supabase Auth:
  * CREATE OR REPLACE FUNCTION public.handle_new_user()

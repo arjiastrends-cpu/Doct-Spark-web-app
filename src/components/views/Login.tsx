@@ -8,6 +8,7 @@ import { User, KeyRound, ShieldAlert, CheckCircle, ArrowRight, Eye, EyeOff } fro
 import { Role } from '../../types';
 import { supabase, getUserRoleFromSupabase } from '../../lib/supabase';
 import { getOrCreatePatientWallet } from '../../data/walletUtils';
+import { logTermsAcceptance, getTermsAcceptanceLogs } from '../../data/termsUtils';
 
 interface LoginProps {
   setView: (view: string) => void;
@@ -217,6 +218,39 @@ export default function Login({ setView, setUserRole, setUserEmail }: LoginProps
               }
             }
           }
+        }
+
+        // Sync terms acceptance from Supabase profile to local storage so future logins on new devices work without re-acceptance
+        try {
+          console.log('Checking terms acceptance from Supabase profile for:', cleanEmail);
+          const { data: profileTermsData, error: profileTermsError } = await supabase
+            .from('profiles')
+            .select('terms_accepted, accepted_terms_version, accepted_terms_at')
+            .eq('email', cleanEmail)
+            .maybeSingle();
+
+          if (!profileTermsError && profileTermsData) {
+            console.log('Fetched terms data from Supabase:', profileTermsData);
+            if (profileTermsData.terms_accepted && profileTermsData.accepted_terms_version) {
+              const logs = getTermsAcceptanceLogs();
+              const alreadyLogged = logs.some(
+                l => l.userEmail.toLowerCase() === cleanEmail.toLowerCase() && 
+                     l.registrationType === 'patient' && 
+                     l.acceptedVersion === profileTermsData.accepted_terms_version
+              );
+              if (!alreadyLogged) {
+                logTermsAcceptance(
+                  cleanEmail,
+                  activeStoredName,
+                  'patient',
+                  profileTermsData.accepted_terms_version
+                );
+                console.log('Synced Supabase terms acceptance to local storage!');
+              }
+            }
+          }
+        } catch (termsSyncErr) {
+          console.warn('Failed to sync terms from Supabase:', termsSyncErr);
         }
       }
 

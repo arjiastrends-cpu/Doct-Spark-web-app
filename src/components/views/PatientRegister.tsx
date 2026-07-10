@@ -8,7 +8,7 @@ import { User, Mail, Phone, KeyRound, Calendar, ArrowLeft, ShieldCheck, Check, M
 import { Role } from '../../types';
 import { getOrCreatePatientWallet } from '../../data/walletUtils';
 import { supabase } from '../../lib/supabase';
-import { logTermsAcceptance } from '../../data/termsUtils';
+import { logTermsAcceptance, getTermsDocuments } from '../../data/termsUtils';
 import TermsConsentCheckbox from '../common/TermsConsentCheckbox';
 
 interface PatientRegisterProps {
@@ -120,13 +120,19 @@ export default function PatientRegister({ setView, setUserRole, setUserEmail }: 
           if (!authError && authData?.user) {
             // Write to profiles table as well with full details (Requirement 8)
             try {
+              const patientDoc = getTermsDocuments().find(d => d.id === 'patient');
+              const latestVersion = patientDoc && patientDoc.publishingStatus === 'Published' ? patientDoc.version : '1.0';
+              
               const { error: upsertErr } = await supabase.from('profiles').upsert({
                 id: authData.user.id,
                 email: finalEmail,
                 role: 'patient',
                 name: name.trim(),
                 full_name: name.trim(),
-                created_at: new Date().toISOString()
+                created_at: new Date().toISOString(),
+                terms_accepted: true,
+                accepted_terms_version: latestVersion,
+                accepted_terms_at: new Date().toISOString()
               });
               
               if (upsertErr) {
@@ -136,7 +142,10 @@ export default function PatientRegister({ setView, setUserRole, setUserEmail }: 
                     id: authData.user.id,
                     email: finalEmail,
                     role: 'patient',
-                    name: name.trim()
+                    name: name.trim(),
+                    terms_accepted: true,
+                    accepted_terms_version: latestVersion,
+                    accepted_terms_at: new Date().toISOString()
                   });
                 } catch (e2) {
                   try {
@@ -144,25 +153,40 @@ export default function PatientRegister({ setView, setUserRole, setUserEmail }: 
                       id: authData.user.id,
                       email: finalEmail,
                       role: 'patient',
-                      full_name: name.trim()
+                      full_name: name.trim(),
+                      terms_accepted: true,
+                      accepted_terms_version: latestVersion,
+                      accepted_terms_at: new Date().toISOString()
                     });
                   } catch (e3) {
                     // Fallback to minimal fields
                     await supabase.from('profiles').upsert({
                       id: authData.user.id,
                       email: finalEmail,
-                      role: 'patient'
+                      role: 'patient',
+                      terms_accepted: true,
+                      accepted_terms_version: latestVersion,
+                      accepted_terms_at: new Date().toISOString()
                     });
                   }
                 }
               }
             } catch (upsertCatchErr) {
               console.warn('Upsert profile failed inside try:', upsertCatchErr);
-              await supabase.from('profiles').upsert({
-                id: authData.user.id,
-                email: finalEmail,
-                role: 'patient'
-              });
+              try {
+                const patientDoc = getTermsDocuments().find(d => d.id === 'patient');
+                const latestVersion = patientDoc && patientDoc.publishingStatus === 'Published' ? patientDoc.version : '1.0';
+                await supabase.from('profiles').upsert({
+                  id: authData.user.id,
+                  email: finalEmail,
+                  role: 'patient',
+                  terms_accepted: true,
+                  accepted_terms_version: latestVersion,
+                  accepted_terms_at: new Date().toISOString()
+                });
+              } catch (finalCatch) {
+                console.warn('Minimal profiles upsert with terms failed:', finalCatch);
+              }
             }
           }
         }
@@ -172,7 +196,9 @@ export default function PatientRegister({ setView, setUserRole, setUserEmail }: 
 
       // Log official T&C acceptance
       try {
-        logTermsAcceptance(finalEmail, name.trim(), finalEmail, 'patient', '1.0');
+        const patientDoc = getTermsDocuments().find(d => d.id === 'patient');
+        const latestVersion = patientDoc && patientDoc.publishingStatus === 'Published' ? patientDoc.version : '1.0';
+        logTermsAcceptance(finalEmail, name.trim(), 'patient', latestVersion);
       } catch (logErr) {
         console.error('Failed to log terms acceptance', logErr);
       }

@@ -36,7 +36,8 @@ import PartnerRegister from './components/views/PartnerRegister';
 import PartnerDashboard from './components/views/PartnerDashboard';
 import SuperAdminDashboard from './components/views/SuperAdminDashboard';
 import { processFirstAppointmentReferralReward, processPendingAppointmentsExpiry } from './data/walletUtils';
-import { checkUserTermsStatus } from './data/termsUtils';
+import { checkUserTermsStatus, getTermsAcceptanceLogs, logTermsAcceptance } from './data/termsUtils';
+import { supabase, getUserRoleFromSupabase } from './lib/supabase';
 import ForceTermsReacceptanceModal from './components/common/ForceTermsReacceptanceModal';
 
 import { MOCK_DOCTORS, INITIAL_APPOINTMENTS, MOCK_CLINICS } from './data/mockData';
@@ -91,6 +92,59 @@ export default function App() {
   React.useEffect(() => {
     localStorage.setItem('ds_clinics', JSON.stringify(clinics));
   }, [clinics]);
+
+  // Restore active Supabase session and sync terms on initial mount
+  React.useEffect(() => {
+    async function restoreSession() {
+      try {
+        const supabaseUrl = (import.meta as any).env?.VITE_SUPABASE_URL;
+        if (supabaseUrl && !supabaseUrl.includes('placeholder')) {
+          console.log('App mounting: Restoring Supabase session...');
+          const { data: { session } } = await supabase.auth.getSession();
+          if (session?.user) {
+            const email = session.user.email;
+            if (email) {
+              const roleResult = await getUserRoleFromSupabase(email);
+              if (roleResult) {
+                const resolvedRole = roleResult.role as Role;
+                setUserRole(resolvedRole);
+                setUserEmail(email);
+                console.log('Restored session for:', email, 'Role:', resolvedRole);
+                
+                // Fetch and sync terms logs if they exist on the Supabase profile
+                const { data: profileData } = await supabase
+                  .from('profiles')
+                  .select('terms_accepted, accepted_terms_version, accepted_terms_at, name')
+                  .eq('email', email.trim().toLowerCase())
+                  .maybeSingle();
+                
+                if (profileData && profileData.terms_accepted && profileData.accepted_terms_version) {
+                  const logs = getTermsAcceptanceLogs();
+                  const alreadyLogged = logs.some(
+                    l => l.userEmail.toLowerCase() === email.toLowerCase() && 
+                         l.registrationType === 'patient' && 
+                         l.acceptedVersion === profileData.accepted_terms_version
+                  );
+                  if (!alreadyLogged) {
+                    logTermsAcceptance(
+                      email,
+                      profileData.name || email.split('@')[0],
+                      'patient',
+                      profileData.accepted_terms_version
+                    );
+                    console.log('Synced restored terms acceptance from profiles table.');
+                  }
+                }
+              }
+            }
+          }
+        }
+      } catch (err) {
+        console.error('Failed to restore Supabase session on mount:', err);
+      }
+    }
+    restoreSession();
+  }, []);
 
   // Synchronize state from localStorage whenever view changes, ensuring partner/superadmin updates are immediately seen!
   React.useEffect(() => {

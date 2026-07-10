@@ -1,6 +1,7 @@
 import React from 'react';
 import { Scale, ShieldAlert, Check, RefreshCw, Lock } from 'lucide-react';
 import { TermsDocument, logTermsAcceptance } from '../../data/termsUtils';
+import { supabase } from '../../lib/supabase';
 
 interface ForceTermsReacceptanceModalProps {
   document: TermsDocument;
@@ -18,25 +19,93 @@ export default function ForceTermsReacceptanceModal({
   const [agreed, setAgreed] = React.useState(false);
   const [loading, setLoading] = React.useState(false);
 
-  const handleAcceptAndContinue = () => {
+  const handleAcceptAndContinue = async () => {
     if (!agreed) return;
     setLoading(true);
     
-    setTimeout(() => {
-      try {
-        logTermsAcceptance(
-          userEmail,
-          userEmail.split('@')[0],
-          userRole,
-          doc.version
-        );
-        onAccept();
-      } catch (err) {
-        console.error('Failed to log forced terms re-acceptance:', err);
-      } finally {
-        setLoading(false);
+    console.log('Starting Patient Terms Acceptance workflow...');
+    console.log('User email:', userEmail);
+    console.log('User role:', userRole);
+    console.log('Latest published version:', doc.version);
+    
+    try {
+      const supabaseUrl = (import.meta as any).env?.VITE_SUPABASE_URL;
+      const hasSupabase = supabaseUrl && !supabaseUrl.includes('placeholder');
+      
+      if (hasSupabase && userRole === 'patient') {
+        console.log('Supabase is configured. Attempting to get auth user...');
+        const { data: { user }, error: userError } = await supabase.auth.getUser();
+        
+        if (userError || !user) {
+          throw new Error('Failed to get authenticated user session: ' + (userError?.message || 'No user session found.'));
+        }
+        
+        console.log('Auth user retrieved:', user.id, user.email);
+        
+        // 1. Perform update in Profiles table
+        console.log('Updating profiles table...');
+        const { data, error: updateError } = await supabase
+          .from('profiles')
+          .update({
+            terms_accepted: true,
+            accepted_terms_version: doc.version,
+            accepted_terms_at: new Date().toISOString()
+          })
+          .eq('id', user.id)
+          .select();
+          
+        if (updateError) {
+          console.error('Error updating profiles table:', updateError);
+          throw new Error(`Database update failed: ${updateError.message} (${updateError.details || 'Check columns or RLS policies'})`);
+        }
+        
+        console.log('Successfully updated profiles table:', data);
+        
+        // 2. Refetch profile to verify and ensure cache is clear
+        console.log('Refetching updated patient profile...');
+        const { data: refetchedProfile, error: refetchError } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', user.id)
+          .maybeSingle();
+          
+        if (refetchError) {
+          console.warn('Profile refetch failed but update succeeded:', refetchError);
+        } else {
+          console.log('Refetched profile successfully:', refetchedProfile);
+        }
+        
+        // 3. Refresh session / token if necessary to ensure claims are fresh
+        console.log('Refreshing authentication session...');
+        const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
+        if (refreshError) {
+          console.warn('Session refresh warning:', refreshError.message);
+        } else {
+          console.log('Session refreshed successfully');
+        }
+      } else {
+        console.log('Supabase not configured or user is not a patient. Storing in local state only.');
       }
-    }, 600);
+      
+      // 4. Log local terms acceptance so synchronous checks succeed immediately
+      logTermsAcceptance(
+        userEmail,
+        userEmail.split('@')[0],
+        userRole,
+        doc.version
+      );
+      
+      // 5. Trigger success callback to unlock and redirect immediately
+      console.log('Terms accepted successfully. Unlocking and redirecting...');
+      onAccept();
+      
+    } catch (err: any) {
+      console.error('CRITICAL: Terms acceptance workflow failed:', err);
+      // Display error toast / alert instead of remaining silently on the same page
+      alert(`Terms Acceptance Failed: ${err.message || err}\n\nPlease ensure your Supabase schema is up-to-date and RLS policies allow profiles to be updated.`);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
