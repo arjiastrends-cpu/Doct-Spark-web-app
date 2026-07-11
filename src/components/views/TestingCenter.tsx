@@ -61,17 +61,119 @@ export default function TestingCenter({
   // Supabase Diagnostics State
   interface TableStatus {
     name: string;
-    exists: boolean | null;
+    module: 'Core Users' | 'Doctors' | 'Clinics and Hospitals' | 'Appointments' | 'Partners' | 'Wallet and Referrals' | 'Payments and Finance' | 'Laboratory' | 'Pharmacy' | 'Notifications' | 'CMS' | 'RBAC' | 'Audit';
+    status: 'NOT CONFIGURED' | 'VERIFIED' | 'EMPTY' | 'RLS BLOCKED' | 'AUTH REQUIRED' | 'TABLE MISSING' | 'RELATIONSHIP ERROR' | 'QUERY FAILED';
     count: number | null;
     error?: string;
   }
   const [tableStatuses, setTableStatuses] = React.useState<TableStatus[]>([
-    { name: 'profiles', exists: null, count: null },
-    { name: 'doctors', exists: null, count: null },
-    { name: 'clinics', exists: null, count: null },
-    { name: 'appointments', exists: null, count: null },
-    { name: 'patient_wallets', exists: null, count: null },
-    { name: 'wallet_transactions', exists: null, count: null }
+    // Core Users
+    { name: 'profiles', module: 'Core Users', status: 'NOT CONFIGURED', count: null },
+    { name: 'patients', module: 'Core Users', status: 'NOT CONFIGURED', count: null },
+    { name: 'user_roles', module: 'Core Users', status: 'NOT CONFIGURED', count: null },
+    { name: 'user_addresses', module: 'Core Users', status: 'NOT CONFIGURED', count: null },
+    { name: 'user_documents', module: 'Core Users', status: 'NOT CONFIGURED', count: null },
+    // Doctors
+    { name: 'doctors', module: 'Doctors', status: 'NOT CONFIGURED', count: null },
+    { name: 'doctor_documents', module: 'Doctors', status: 'NOT CONFIGURED', count: null },
+    { name: 'doctor_qualifications', module: 'Doctors', status: 'NOT CONFIGURED', count: null },
+    { name: 'doctor_experience', module: 'Doctors', status: 'NOT CONFIGURED', count: null },
+    { name: 'doctor_specializations', module: 'Doctors', status: 'NOT CONFIGURED', count: null },
+    { name: 'doctor_availability', module: 'Doctors', status: 'NOT CONFIGURED', count: null },
+    { name: 'doctor_schedules', module: 'Doctors', status: 'NOT CONFIGURED', count: null },
+    { name: 'doctor_time_slots', module: 'Doctors', status: 'NOT CONFIGURED', count: null },
+    { name: 'doctor_clinics', module: 'Doctors', status: 'NOT CONFIGURED', count: null },
+    { name: 'doctor_verifications', module: 'Doctors', status: 'NOT CONFIGURED', count: null },
+    { name: 'doctor_reviews', module: 'Doctors', status: 'NOT CONFIGURED', count: null },
+    // Clinics and Hospitals
+    { name: 'clinics', module: 'Clinics and Hospitals', status: 'NOT CONFIGURED', count: null },
+    { name: 'clinic_documents', module: 'Clinics and Hospitals', status: 'NOT CONFIGURED', count: null },
+    { name: 'clinic_services', module: 'Clinics and Hospitals', status: 'NOT CONFIGURED', count: null },
+    { name: 'clinic_doctors', module: 'Clinics and Hospitals', status: 'NOT CONFIGURED', count: null },
+    { name: 'clinic_verifications', module: 'Clinics and Hospitals', status: 'NOT CONFIGURED', count: null },
+    { name: 'hospitals', module: 'Clinics and Hospitals', status: 'NOT CONFIGURED', count: null },
+    { name: 'hospital_documents', module: 'Clinics and Hospitals', status: 'NOT CONFIGURED', count: null },
+    { name: 'hospital_services', module: 'Clinics and Hospitals', status: 'NOT CONFIGURED', count: null },
+    { name: 'hospital_doctors', module: 'Clinics and Hospitals', status: 'NOT CONFIGURED', count: null },
+    // Appointments
+    { name: 'appointments', module: 'Appointments', status: 'NOT CONFIGURED', count: null },
+    { name: 'appointment_status_history', module: 'Appointments', status: 'NOT CONFIGURED', count: null },
+    { name: 'appointment_payments', module: 'Appointments', status: 'NOT CONFIGURED', count: null },
+    { name: 'appointment_cancellations', module: 'Appointments', status: 'NOT CONFIGURED', count: null },
+    { name: 'appointment_reschedules', module: 'Appointments', status: 'NOT CONFIGURED', count: null },
+    { name: 'appointment_notes', module: 'Appointments', status: 'NOT CONFIGURED', count: null },
+    { name: 'appointment_documents', module: 'Appointments', status: 'NOT CONFIGURED', count: null },
+    // Partners
+    { name: 'partners', module: 'Partners', status: 'NOT CONFIGURED', count: null },
+    { name: 'partner_documents', module: 'Partners', status: 'NOT CONFIGURED', count: null },
+    { name: 'partner_verifications', module: 'Partners', status: 'NOT CONFIGURED', count: null },
+    { name: 'partner_hierarchy', module: 'Partners', status: 'NOT CONFIGURED', count: null },
+    { name: 'partner_referrals', module: 'Partners', status: 'NOT CONFIGURED', count: null },
+    { name: 'partner_onboardings', module: 'Partners', status: 'NOT CONFIGURED', count: null },
+    { name: 'partner_commissions', module: 'Partners', status: 'NOT CONFIGURED', count: null },
+    { name: 'partner_commission_transactions', module: 'Partners', status: 'NOT CONFIGURED', count: null },
+    { name: 'partner_targets', module: 'Partners', status: 'NOT CONFIGURED', count: null },
+    { name: 'partner_rewards', module: 'Partners', status: 'NOT CONFIGURED', count: null },
+    { name: 'partner_payouts', module: 'Partners', status: 'NOT CONFIGURED', count: null },
+    // Wallet and Referrals
+    { name: 'patient_wallets', module: 'Wallet and Referrals', status: 'NOT CONFIGURED', count: null },
+    { name: 'wallet_transactions', module: 'Wallet and Referrals', status: 'NOT CONFIGURED', count: null },
+    { name: 'wallet_usage', module: 'Wallet and Referrals', status: 'NOT CONFIGURED', count: null },
+    { name: 'patient_referrals', module: 'Wallet and Referrals', status: 'NOT CONFIGURED', count: null },
+    { name: 'referral_rewards', module: 'Wallet and Referrals', status: 'NOT CONFIGURED', count: null },
+    // Payments and Finance
+    { name: 'payments', module: 'Payments and Finance', status: 'NOT CONFIGURED', count: null },
+    { name: 'payment_transactions', module: 'Payments and Finance', status: 'NOT CONFIGURED', count: null },
+    { name: 'payment_refunds', module: 'Payments and Finance', status: 'NOT CONFIGURED', count: null },
+    { name: 'platform_fees', module: 'Payments and Finance', status: 'NOT CONFIGURED', count: null },
+    { name: 'revenue_records', module: 'Payments and Finance', status: 'NOT CONFIGURED', count: null },
+    { name: 'commission_rules', module: 'Payments and Finance', status: 'NOT CONFIGURED', count: null },
+    { name: 'commission_distributions', module: 'Payments and Finance', status: 'NOT CONFIGURED', count: null },
+    { name: 'payouts', module: 'Payments and Finance', status: 'NOT CONFIGURED', count: null },
+    { name: 'invoices', module: 'Payments and Finance', status: 'NOT CONFIGURED', count: null },
+    // Laboratory
+    { name: 'laboratories', module: 'Laboratory', status: 'NOT CONFIGURED', count: null },
+    { name: 'laboratory_documents', module: 'Laboratory', status: 'NOT CONFIGURED', count: null },
+    { name: 'laboratory_verifications', module: 'Laboratory', status: 'NOT CONFIGURED', count: null },
+    { name: 'lab_tests', module: 'Laboratory', status: 'NOT CONFIGURED', count: null },
+    { name: 'lab_test_packages', module: 'Laboratory', status: 'NOT CONFIGURED', count: null },
+    { name: 'lab_package_items', module: 'Laboratory', status: 'NOT CONFIGURED', count: null },
+    { name: 'lab_collection_agents', module: 'Laboratory', status: 'NOT CONFIGURED', count: null },
+    { name: 'lab_bookings', module: 'Laboratory', status: 'NOT CONFIGURED', count: null },
+    { name: 'lab_booking_items', module: 'Laboratory', status: 'NOT CONFIGURED', count: null },
+    { name: 'lab_sample_collections', module: 'Laboratory', status: 'NOT CONFIGURED', count: null },
+    { name: 'lab_reports', module: 'Laboratory', status: 'NOT CONFIGURED', count: null },
+    { name: 'lab_payments', module: 'Laboratory', status: 'NOT CONFIGURED', count: null },
+    // Pharmacy
+    { name: 'pharmacies', module: 'Pharmacy', status: 'NOT CONFIGURED', count: null },
+    { name: 'pharmacy_documents', module: 'Pharmacy', status: 'NOT CONFIGURED', count: null },
+    { name: 'pharmacy_staff', module: 'Pharmacy', status: 'NOT CONFIGURED', count: null },
+    { name: 'medicines', module: 'Pharmacy', status: 'NOT CONFIGURED', count: null },
+    { name: 'medicine_categories', module: 'Pharmacy', status: 'NOT CONFIGURED', count: null },
+    { name: 'pharmacy_inventory', module: 'Pharmacy', status: 'NOT CONFIGURED', count: null },
+    { name: 'medicine_orders', module: 'Pharmacy', status: 'NOT CONFIGURED', count: null },
+    { name: 'medicine_order_items', module: 'Pharmacy', status: 'NOT CONFIGURED', count: null },
+    { name: 'delivery_agents', module: 'Pharmacy', status: 'NOT CONFIGURED', count: null },
+    { name: 'medicine_deliveries', module: 'Pharmacy', status: 'NOT CONFIGURED', count: null },
+    { name: 'pharmacy_payments', module: 'Pharmacy', status: 'NOT CONFIGURED', count: null },
+    // Notifications
+    { name: 'notifications', module: 'Notifications', status: 'NOT CONFIGURED', count: null },
+    { name: 'notification_preferences', module: 'Notifications', status: 'NOT CONFIGURED', count: null },
+    { name: 'notification_delivery_logs', module: 'Notifications', status: 'NOT CONFIGURED', count: null },
+    // RBAC
+    { name: 'roles', module: 'RBAC', status: 'NOT CONFIGURED', count: null },
+    { name: 'permissions', module: 'RBAC', status: 'NOT CONFIGURED', count: null },
+    { name: 'role_permissions', module: 'RBAC', status: 'NOT CONFIGURED', count: null },
+    { name: 'user_role_assignments', module: 'RBAC', status: 'NOT CONFIGURED', count: null },
+    { name: 'admin_users', module: 'RBAC', status: 'NOT CONFIGURED', count: null },
+    // CMS
+    { name: 'cms_pages', module: 'CMS', status: 'NOT CONFIGURED', count: null },
+    { name: 'cms_page_versions', module: 'CMS', status: 'NOT CONFIGURED', count: null },
+    { name: 'faqs', module: 'CMS', status: 'NOT CONFIGURED', count: null },
+    { name: 'announcements', module: 'CMS', status: 'NOT CONFIGURED', count: null },
+    // Audit
+    { name: 'audit_logs', module: 'Audit', status: 'NOT CONFIGURED', count: null },
+    { name: 'system_activity_logs', module: 'Audit', status: 'NOT CONFIGURED', count: null }
   ]);
   const [testingSupabase, setTestingSupabase] = React.useState<boolean>(false);
   const [supabaseTestLogs, setSupabaseTestLogs] = React.useState<string[]>([]);
@@ -157,21 +259,32 @@ export default function TestingCenter({
           .from(tbl.name)
           .select('*', { count: 'exact', head: true });
           
+        let statusVal: 'NOT CONFIGURED' | 'VERIFIED' | 'EMPTY' | 'RLS BLOCKED' | 'AUTH REQUIRED' | 'TABLE MISSING' | 'RELATIONSHIP ERROR' | 'QUERY FAILED' = 'NOT CONFIGURED';
         if (error) {
-          tbl.exists = false;
           tbl.count = 0;
           tbl.error = error.message;
-          logs.push(`❌ Table "${tbl.name}" check failed: ${error.message}`);
+          const msg = error.message.toLowerCase();
+          if (msg.includes('relation') && (msg.includes('does not exist') || msg.includes('not found'))) {
+            statusVal = 'TABLE MISSING';
+          } else if (msg.includes('permission') || msg.includes('row-level security') || msg.includes('rls')) {
+            statusVal = 'RLS BLOCKED';
+          } else if (msg.includes('jwt') || msg.includes('auth')) {
+            statusVal = 'AUTH REQUIRED';
+          } else {
+            statusVal = 'QUERY FAILED';
+          }
+          logs.push(`❌ Table "${tbl.name}" check failed: ${error.message} [Status: ${statusVal}]`);
         } else {
-          tbl.exists = true;
-          tbl.count = count !== null ? count : 0;
           tbl.error = undefined;
-          logs.push(`✅ Table "${tbl.name}" verified! Record count: ${count}`);
+          tbl.count = count !== null ? count : 0;
+          statusVal = tbl.count > 0 ? 'VERIFIED' : 'EMPTY';
+          logs.push(`✅ Table "${tbl.name}" verified! Record count: ${count} [Status: ${statusVal}]`);
         }
+        tbl.status = statusVal;
       } catch (err: any) {
-        tbl.exists = false;
         tbl.count = 0;
         tbl.error = err.message || String(err);
+        tbl.status = 'QUERY FAILED';
         logs.push(`❌ Table "${tbl.name}" exception: ${tbl.error}`);
       }
       setTableStatuses([...updatedStatuses]);
@@ -2461,42 +2574,46 @@ export default function TestingCenter({
           <div className="lg:col-span-7 space-y-6">
             {/* Table Health Status List */}
             <div className="bg-white border border-slate-200 rounded-3xl p-5 shadow-3xs">
-              <h4 className="text-sm font-black text-slate-800 uppercase tracking-wider mb-3 flex items-center gap-1.5">
+              <h4 className="text-sm font-black text-slate-800 uppercase tracking-wider mb-4 flex items-center gap-1.5">
                 <Activity className="w-4 h-4 text-indigo-600" /> Database Tables Status Checklist
               </h4>
               
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {tableStatuses.map((tbl) => {
-                  let badge = (
-                    <span className="text-[9px] bg-slate-100 text-slate-500 font-black px-2 py-0.5 rounded-md uppercase">
-                      Untested
-                    </span>
-                  );
-                  if (tbl.exists === true) {
-                    badge = (
-                      <span className="text-[9px] bg-emerald-50 text-emerald-700 border border-emerald-200 font-black px-2 py-0.5 rounded-md uppercase">
-                        ✅ Verified ({tbl.count} rows)
-                      </span>
-                    );
-                  } else if (tbl.exists === false) {
-                    badge = (
-                      <span className="text-[9px] bg-red-50 text-red-700 border border-red-200 font-black px-2 py-0.5 rounded-md uppercase">
-                        ❌ Missing
-                      </span>
-                    );
-                  }
-
+              <div className="space-y-6 max-h-[600px] overflow-y-auto pr-2 scrollbar-thin">
+                {(['Core Users', 'Doctors', 'Clinics and Hospitals', 'Appointments', 'Partners', 'Wallet and Referrals', 'Payments and Finance', 'Laboratory', 'Pharmacy', 'Notifications', 'CMS', 'RBAC', 'Audit'] as const).map((moduleName) => {
+                  const moduleTables = tableStatuses.filter(t => t.module === moduleName);
+                  if (moduleTables.length === 0) return null;
                   return (
-                    <div key={tbl.name} className="p-3 border border-slate-200 bg-slate-50 rounded-2xl space-y-1.5 flex flex-col justify-between">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-bold text-slate-700 font-mono">"{tbl.name}"</span>
-                        {badge}
+                    <div key={moduleName} className="space-y-2">
+                      <h5 className="text-[10px] font-black uppercase text-slate-400 tracking-wider flex items-center gap-1.5 border-b border-slate-100 pb-1.5 font-mono">
+                        ● {moduleName}
+                      </h5>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        {moduleTables.map((tbl) => {
+                          let badgeColor = 'bg-slate-50 text-slate-500 border-slate-200';
+                          if (tbl.status === 'VERIFIED') badgeColor = 'bg-emerald-50 text-emerald-700 border-emerald-200';
+                          else if (tbl.status === 'EMPTY') badgeColor = 'bg-blue-50 text-blue-700 border-blue-200';
+                          else if (tbl.status === 'TABLE MISSING') badgeColor = 'bg-red-50 text-red-700 border-red-200';
+                          else if (tbl.status === 'RLS BLOCKED') badgeColor = 'bg-amber-50 text-amber-700 border-amber-200';
+                          else if (tbl.status === 'AUTH REQUIRED') badgeColor = 'bg-purple-50 text-purple-700 border-purple-200';
+                          else if (tbl.status === 'QUERY FAILED') badgeColor = 'bg-orange-50 text-orange-700 border-orange-200';
+
+                          return (
+                            <div key={tbl.name} className="p-3 border border-slate-200 bg-slate-50/50 rounded-2xl space-y-1.5 flex flex-col justify-between hover:border-slate-300 transition-colors">
+                              <div className="flex items-center justify-between gap-2">
+                                <span className="text-xs font-bold text-slate-700 font-mono truncate">"{tbl.name}"</span>
+                                <span className={`text-[8px] font-mono border font-black px-1.5 py-0.5 rounded-md uppercase shrink-0 ${badgeColor}`}>
+                                  {tbl.status === 'VERIFIED' ? `VERIFIED (${tbl.count} rows)` : tbl.status}
+                                </span>
+                              </div>
+                              {tbl.error && (
+                                <p className="text-[9px] font-mono text-red-500 leading-tight bg-red-50 p-1.5 rounded-md border border-red-100 break-words">
+                                  {tbl.error}
+                                </p>
+                              )}
+                            </div>
+                          );
+                        })}
                       </div>
-                      {tbl.error && (
-                        <p className="text-[9px] font-mono text-red-500 leading-tight bg-red-50 p-1.5 rounded-md border border-red-100 break-words">
-                          {tbl.error}
-                        </p>
-                      )}
                     </div>
                   );
                 })}
