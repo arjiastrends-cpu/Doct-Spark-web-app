@@ -119,6 +119,17 @@ export default function PatientDashboard({
     }
   }, [patientEmail]);
 
+  const [selectedAppointmentForDetails, setSelectedAppointmentForDetails] = React.useState<Appointment | null>(null);
+
+  const handleViewDoctorProfile = (doctorId: string) => {
+    if (!doctorId) {
+      console.warn("Cannot navigate to doctor profile: missing doctor ID");
+      return;
+    }
+    setSelectedDoctorId(doctorId);
+    setView('doctor-profile');
+  };
+
   // Load & Sync patient name from Supabase / Auth Metadata on Mount
   React.useEffect(() => {
     async function syncPatientProfile() {
@@ -872,9 +883,20 @@ export default function PatientDashboard({
                         {upcomingAppointments.map((apt) => (
                           <div key={apt.id} className="bg-white border-2 border-[#0A6E6E]/30 hover:border-[#0A6E6E]/60 rounded-2xl p-5 shadow-3xs flex flex-col sm:flex-row justify-between gap-4 transition-all">
                             <div className="flex items-start gap-4">
-                              <img src={apt.doctorPhoto || undefined} alt={apt.doctorName} className="w-12 h-12 rounded-xl object-cover bg-gray-50 border border-gray-100 shrink-0" referrerPolicy="no-referrer" />
+                              <img 
+                                src={apt.doctorPhoto || undefined} 
+                                alt={apt.doctorName} 
+                                onClick={() => handleViewDoctorProfile(apt.doctorId)}
+                                className="w-12 h-12 rounded-xl object-cover bg-gray-50 border border-gray-100 shrink-0 cursor-pointer hover:opacity-80 transition-opacity" 
+                                referrerPolicy="no-referrer" 
+                              />
                               <div>
-                                <h3 className="text-sm font-extrabold text-[#1A2B3C]">{apt.doctorName}</h3>
+                                <h3 
+                                  onClick={() => handleViewDoctorProfile(apt.doctorId)}
+                                  className="text-sm font-extrabold text-[#1A2B3C] hover:text-[#0A6E6E] hover:underline cursor-pointer"
+                                >
+                                  {apt.doctorName}
+                                </h3>
                                 <p className="text-xs text-gray-400 font-semibold uppercase tracking-wider block">
                                   {apt.doctorSpecialty} {apt.clinicName ? `• ${apt.clinicName}` : ''}
                                 </p>
@@ -908,7 +930,7 @@ export default function PatientDashboard({
                                 </div>
                               )}
                               <button 
-                                onClick={() => alert(`Consultation ID: ${apt.id}\nReason: ${apt.reason}\nStatus: ${apt.status}\nFee: ₹${apt.fee}`)}
+                                onClick={() => setSelectedAppointmentForDetails(apt)}
                                 className="px-4 py-2 hover:bg-[#F0F7F7] text-[#0A6E6E] font-extrabold text-xs border border-[#D1E5E5] rounded-xl shrink-0 transition-colors cursor-pointer"
                               >
                                 Details
@@ -1245,10 +1267,21 @@ export default function PatientDashboard({
                 {filteredAppointments.map((apt) => (
                   <div key={apt.id} className="bg-white border border-[#D1E5E5] rounded-2xl p-5 shadow-3xs hover:shadow-2xs transition-all flex flex-col md:flex-row justify-between gap-4">
                     <div className="flex items-start gap-4">
-                      <img src={apt.doctorPhoto || undefined} alt={apt.doctorName} className="w-12 h-12 rounded-xl object-cover bg-gray-50 border border-gray-100 shrink-0" referrerPolicy="no-referrer" />
+                      <img 
+                        src={apt.doctorPhoto || undefined} 
+                        alt={apt.doctorName} 
+                        onClick={() => handleViewDoctorProfile(apt.doctorId)}
+                        className="w-12 h-12 rounded-xl object-cover bg-gray-50 border border-gray-100 shrink-0 cursor-pointer hover:opacity-80 transition-opacity" 
+                        referrerPolicy="no-referrer" 
+                      />
                       <div>
                         <div className="flex items-center gap-2 flex-wrap">
-                          <h3 className="text-sm font-extrabold text-[#1A2B3C]">{apt.doctorName}</h3>
+                          <h3 
+                            onClick={() => handleViewDoctorProfile(apt.doctorId)}
+                            className="text-sm font-extrabold text-[#1A2B3C] hover:text-[#0A6E6E] hover:underline cursor-pointer"
+                          >
+                            {apt.doctorName}
+                          </h3>
                           <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-full border ${
                             apt.status === 'Completed' 
                               ? 'bg-emerald-50 text-emerald-700 border-emerald-100' 
@@ -1303,7 +1336,14 @@ export default function PatientDashboard({
                       )}
 
                       <button
-                        onClick={() => alert(`Full Log Details:\nConsult ID: ${apt.id}\nPatient: ${apt.patientName}\nDoctor: ${apt.doctorName}\nDate: ${apt.date}\nTime: ${apt.time}\nType: ${apt.type}\nFee Amount: ₹${apt.fee}\nPayment Status: ${apt.paymentStatus || 'Paid'}`)}
+                        onClick={() => handleViewDoctorProfile(apt.doctorId)}
+                        className="px-4 py-2 bg-[#F0F7F7] hover:bg-[#D1E5E5] text-[#0A6E6E] font-extrabold text-xs border border-[#D1E5E5] rounded-xl shrink-0 transition-colors cursor-pointer"
+                      >
+                        View Doctor
+                      </button>
+
+                      <button
+                        onClick={() => setSelectedAppointmentForDetails(apt)}
                         className="px-4 py-2 hover:bg-[#F0F7F7] text-[#0A6E6E] font-extrabold text-xs border border-[#D1E5E5] rounded-xl shrink-0 transition-colors cursor-pointer"
                       >
                         Receipt Info
@@ -1904,6 +1944,104 @@ export default function PatientDashboard({
               </button>
             </div>
 
+          </div>
+        </div>
+      )}
+
+      {/* CONSULTATION DETAILS MODAL */}
+      {selectedAppointmentForDetails && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl max-w-lg w-full border border-[#D1E5E5] p-6 relative shadow-2xl">
+            <button
+              onClick={() => setSelectedAppointmentForDetails(null)}
+              className="absolute top-5 right-5 text-gray-400 hover:text-gray-900 font-extrabold text-sm w-8 h-8 rounded-full bg-slate-50 hover:bg-slate-100 flex items-center justify-center transition-colors"
+            >
+              ✕
+            </button>
+            
+            {/* Modal Header */}
+            <div className="border-b-2 border-dashed border-[#D1E5E5] pb-4 mb-4">
+              <div className="flex justify-between items-start mb-2">
+                <div className="w-10 h-10 bg-[#0A6E6E] rounded-xl flex items-center justify-center text-white text-lg font-black">📋</div>
+                <div className="text-right">
+                  <div className="text-xs font-black text-gray-900 uppercase tracking-widest">Consultation Receipt & Details</div>
+                  <div className="text-[9px] text-gray-400 font-black font-mono">ID: {selectedAppointmentForDetails.id}</div>
+                </div>
+              </div>
+              <h3 className="text-sm font-extrabold text-[#1A2B3C]">{selectedAppointmentForDetails.doctorName}</h3>
+              <p className="text-[9px] text-gray-400 font-black uppercase tracking-wider">{selectedAppointmentForDetails.doctorSpecialty}</p>
+            </div>
+
+            {/* Modal Content */}
+            <div className="text-xs font-medium text-slate-700 flex flex-col gap-4">
+              <div className="grid grid-cols-2 gap-4 bg-slate-50 p-3.5 rounded-2xl border border-slate-100">
+                <div>
+                  <span className="text-gray-400 block text-[9px] uppercase font-bold">Patient Name</span>
+                  <span className="text-gray-900 font-extrabold">{selectedAppointmentForDetails.patientName}</span>
+                </div>
+                <div>
+                  <span className="text-gray-400 block text-[9px] uppercase font-bold">Age & Gender</span>
+                  <span className="text-gray-900 font-extrabold">{selectedAppointmentForDetails.patientAge} Years • {selectedAppointmentForDetails.patientGender}</span>
+                </div>
+                <div>
+                  <span className="text-gray-400 block text-[9px] uppercase font-bold">Date & Scheduled Time</span>
+                  <span className="text-gray-900 font-extrabold">{selectedAppointmentForDetails.date} @ {selectedAppointmentForDetails.time}</span>
+                </div>
+                <div>
+                  <span className="text-gray-400 block text-[9px] uppercase font-bold">Consultation Type</span>
+                  <span className="text-gray-900 font-extrabold">{selectedAppointmentForDetails.type} Visit</span>
+                </div>
+              </div>
+
+              {selectedAppointmentForDetails.reason && (
+                <div>
+                  <span className="text-gray-400 block text-[9px] uppercase font-bold">Reason for Visit</span>
+                  <p className="text-gray-700 mt-0.5 leading-normal bg-slate-50/50 p-2.5 rounded-xl border border-dashed border-gray-200">{selectedAppointmentForDetails.reason}</p>
+                </div>
+              )}
+
+              {selectedAppointmentForDetails.clinicName && (
+                <div>
+                  <span className="text-gray-400 block text-[9px] uppercase font-bold">Clinical Center</span>
+                  <span className="text-gray-900 font-extrabold block">{selectedAppointmentForDetails.clinicName}</span>
+                  {selectedAppointmentForDetails.clinicAddress && (
+                    <span className="text-gray-500 text-[10px] leading-tight block mt-0.5">{selectedAppointmentForDetails.clinicAddress}</span>
+                  )}
+                </div>
+              )}
+
+              <div className="border-t border-gray-100 pt-3 flex justify-between items-center">
+                <div>
+                  <span className="text-gray-400 block text-[9px] uppercase font-bold">Consultation Fee</span>
+                  <span className="text-lg font-black text-[#0A6E6E]">₹{selectedAppointmentForDetails.fee}</span>
+                </div>
+                <div className="text-right">
+                  <span className="text-gray-400 block text-[9px] uppercase font-bold">Payment Status</span>
+                  <span className="bg-emerald-50 text-emerald-800 border border-emerald-100 text-[10px] font-black px-2.5 py-1 rounded-full uppercase">
+                    {selectedAppointmentForDetails.paymentStatus || 'Paid'}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="border-t border-gray-100 pt-4 mt-5 flex justify-end gap-2">
+              <button
+                onClick={() => {
+                  handleViewDoctorProfile(selectedAppointmentForDetails.doctorId);
+                  setSelectedAppointmentForDetails(null);
+                }}
+                className="px-4 py-2 bg-[#0A6E6E] text-white font-extrabold text-xs rounded-xl shadow cursor-pointer hover:bg-[#0A6E6E]/90 transition-colors"
+              >
+                View Doctor Profile
+              </button>
+              <button
+                onClick={() => setSelectedAppointmentForDetails(null)}
+                className="px-4 py-2 border border-[#D1E5E5] rounded-xl text-xs font-extrabold text-gray-500 hover:bg-slate-50 transition-colors cursor-pointer"
+              >
+                Close
+              </button>
+            </div>
           </div>
         </div>
       )}

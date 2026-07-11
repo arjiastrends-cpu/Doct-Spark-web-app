@@ -7,6 +7,7 @@ import React from 'react';
 import { Star, ShieldAlert, Award, GraduationCap, Building, Calendar, Clock, ChevronRight, User, MapPin } from 'lucide-react';
 import { MOCK_DOCTORS, MOCK_REVIEWS } from '../../data/mockData';
 import { Doctor } from '../../types';
+import { supabase } from '../../lib/supabase';
 
 interface DoctorProfileProps {
   setView: (view: string) => void;
@@ -23,47 +24,146 @@ export default function DoctorProfile({
   setSelectedBookingDate,
   setSelectedBookingSlot
 }: DoctorProfileProps) {
+  const [doctor, setDoctor] = React.useState<Doctor | null>(null);
+  const [loading, setLoading] = React.useState<boolean>(true);
+  const [errorMsg, setErrorMsg] = React.useState<string | null>(null);
+
   const allDoctors = React.useMemo(() => {
     const saved = localStorage.getItem('ds_doctors');
     return saved ? JSON.parse(saved) : [...MOCK_DOCTORS];
   }, []);
 
-  // Safe Fallback if no doctor selected
-  const doctor = allDoctors.find(d => d.id === selectedDoctorId) || allDoctors[0] || {
-    id: 'placeholder-doc',
-    name: 'Doctor',
-    specialty: 'Specialist',
-    photo: 'https://images.unsplash.com/photo-1537368910025-700350fe46c7?auto=format&fit=crop&q=80&w=200',
-    clinics: [],
-    timeSlots: [],
-    feeInClinic: 500,
-    feeVideo: 500,
-    clinicName: 'Clinic',
-    city: 'City',
-    rating: 5,
-    reviewsCount: 10,
-    registrationNumber: 'MCI-00000',
-    education: 'MBBS, MD',
-    experience: 5
-  };
+  React.useEffect(() => {
+    let active = true;
+    async function loadDoctor() {
+      if (!selectedDoctorId) {
+        if (active) {
+          setDoctor(null);
+          setErrorMsg("Doctor profile not found.");
+          setLoading(false);
+        }
+        return;
+      }
 
-  if (doctor.id === 'placeholder-doc') {
-    return (
-      <div className="flex-1 max-w-4xl w-full mx-auto px-4 py-10" id="doctor-profile-root">
-        <div className="bg-white p-8 rounded-xl border border-dashed border-[#D1E5E5] flex flex-col items-center justify-center text-center py-12 shadow-xs">
-          <span className="text-3xl mb-3">🥼</span>
-          <h4 className="text-sm font-extrabold text-[#1A2B3C] mb-1">No Doctor Profile Selected</h4>
-          <p className="text-xs text-gray-400 max-w-md leading-relaxed">Please choose a verified specialist or consultant from our primary search directory list to view their complete profile.</p>
-          <button
-            onClick={() => setView('doctors')}
-            className="mt-4 px-4 py-2 bg-[#0A6E6E] hover:bg-[#0A6E6E]/90 text-white font-extrabold text-xs rounded-lg transition-colors cursor-pointer"
-          >
-            Browse Doctor Directory
-          </button>
-        </div>
-      </div>
-    );
-  }
+      setLoading(true);
+      setErrorMsg(null);
+      setDoctor(null); // Clear previous state to avoid stale display bugs!
+
+      const supabaseUrl = (import.meta as any).env?.VITE_SUPABASE_URL;
+      const hasSupabase = supabaseUrl && !supabaseUrl.includes('placeholder');
+
+      if (hasSupabase) {
+        try {
+          const { data, error } = await supabase
+            .from('doctors')
+            .select('*')
+            .eq('id', selectedDoctorId)
+            .maybeSingle();
+
+          if (error) {
+            console.warn('Supabase fetch failed for doctor:', error);
+          }
+
+          if (active) {
+            if (data) {
+              if (data.id !== selectedDoctorId) {
+                setErrorMsg("Doctor profile identity mismatch.");
+                setDoctor(null);
+              } else {
+                // Map from DB snake_case structure
+                const mappedDoc: Doctor = {
+                  id: data.id,
+                  name: data.name,
+                  specialty: data.specialty,
+                  experience: Number(data.experience) || 5,
+                  rating: Number(data.rating) || 5.0,
+                  feeInClinic: Number(data.consultation_fee) || 500,
+                  feeVideo: Number(data.video_fee) || 500,
+                  photo: data.photo || 'https://images.unsplash.com/photo-1537368910025-700350fe46c7?auto=format&fit=crop&q=80&w=200',
+                  registrationNumber: data.mci_registration || '',
+                  email: data.email,
+                  contactPhone: data.phone || '',
+                  timeSlots: ['09:00 AM', '11:00 AM', '04:00 PM', '06:00 PM'], // Standard slots
+                  clinicName: data.clinic_address || 'Apollo Clinic',
+                  city: 'City',
+                  reviewsCount: 15,
+                  bio: 'Doctor Biography is not provided in database.',
+                  education: 'MBBS, MD',
+                  availableDays: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'],
+                  lat: 19.076,
+                  lng: 72.877,
+                  nextAvailable: 'Today 4:00 PM'
+                };
+                
+                // Also check if there is an offline cache to enrich bio/education
+                const saved = localStorage.getItem('ds_doctors');
+                if (saved) {
+                  const cachedList: Doctor[] = JSON.parse(saved);
+                  const matched = cachedList.find(d => d.id === selectedDoctorId);
+                  if (matched) {
+                    mappedDoc.bio = matched.bio || mappedDoc.bio;
+                    mappedDoc.education = matched.education || mappedDoc.education;
+                    mappedDoc.timeSlots = matched.timeSlots || mappedDoc.timeSlots;
+                    mappedDoc.availableDays = matched.availableDays || mappedDoc.availableDays;
+                    mappedDoc.clinicName = matched.clinicName || mappedDoc.clinicName;
+                    mappedDoc.city = matched.city || mappedDoc.city;
+                    mappedDoc.reviewsCount = matched.reviewsCount || mappedDoc.reviewsCount;
+                  }
+                }
+                
+                setDoctor(mappedDoc);
+              }
+            } else {
+              // Check offline local state fallback if not in remote database
+              const saved = localStorage.getItem('ds_doctors');
+              const localDocs: Doctor[] = saved ? JSON.parse(saved) : [...MOCK_DOCTORS];
+              const found = localDocs.find(d => d.id === selectedDoctorId);
+              if (found) {
+                if (found.id !== selectedDoctorId) {
+                  setErrorMsg("Doctor profile identity mismatch.");
+                  setDoctor(null);
+                } else {
+                  setDoctor(found);
+                }
+              } else {
+                setErrorMsg("Doctor profile not found.");
+              }
+            }
+            setLoading(false);
+          }
+        } catch (err: any) {
+          console.error('Error loading doctor:', err);
+          if (active) {
+            setErrorMsg(err.message || "Failed to load doctor profile.");
+            setLoading(false);
+          }
+        }
+      } else {
+        // Purely offline mode
+        if (active) {
+          const saved = localStorage.getItem('ds_doctors');
+          const localDocs: Doctor[] = saved ? JSON.parse(saved) : [...MOCK_DOCTORS];
+          const found = localDocs.find(d => d.id === selectedDoctorId);
+          if (found) {
+            if (found.id !== selectedDoctorId) {
+              setErrorMsg("Doctor profile identity mismatch.");
+              setDoctor(null);
+            } else {
+              setDoctor(found);
+            }
+          } else {
+            setErrorMsg("Doctor profile not found.");
+          }
+          setLoading(false);
+        }
+      }
+    }
+
+    loadDoctor();
+    return () => {
+      active = false;
+    };
+  }, [selectedDoctorId]);
 
   // Date list calculations: Generate 15 days dynamically starting from today
   const datesList = Array.from({ length: 15 }, (_, i) => {
@@ -85,18 +185,25 @@ export default function DoctorProfile({
   });
 
   const [chosenDate, setChosenDate] = React.useState(datesList[0].dateStr);
-  const [chosenSlot, setChosenSlot] = React.useState(doctor.timeSlots[0]);
+  const [chosenSlot, setChosenSlot] = React.useState('');
+
+  // Sync chosenSlot when doctor successfully loads
+  React.useEffect(() => {
+    if (doctor && doctor.timeSlots && doctor.timeSlots.length > 0) {
+      setChosenSlot(doctor.timeSlots[0]);
+    }
+  }, [doctor]);
 
   // Review pagination
   const [reviewPage, setReviewPage] = React.useState(1);
   const reviewsPerPage = 2;
-  const filteredReviews = MOCK_REVIEWS.filter(r => r.doctorName === doctor.name);
+  const filteredReviews = doctor ? MOCK_REVIEWS.filter(r => r.doctorName === doctor.name) : [];
   const totalReviewPages = Math.ceil(filteredReviews.length / reviewsPerPage) || 1;
 
   // Reset page when doctor changes to avoid out-of-bounds page issues
   React.useEffect(() => {
     setReviewPage(1);
-  }, [doctor.id]);
+  }, [doctor?.id]);
 
   const currentReviews = React.useMemo(() => {
     const startIdx = (reviewPage - 1) * reviewsPerPage;
@@ -105,6 +212,7 @@ export default function DoctorProfile({
 
   // Handle Quick Booking
   const handleProceedBooking = () => {
+    if (!doctor) return;
     setSelectedBookingDate(chosenDate);
     setSelectedBookingSlot(chosenSlot);
     setSelectedDoctorId(doctor.id);
@@ -119,7 +227,40 @@ export default function DoctorProfile({
   };
 
   // Similar Doctors (same specialty or city, excluding current doctor)
-  const similarDoctors = allDoctors.filter(d => d.id !== doctor.id && d.specialty === doctor.specialty).slice(0, 2);
+  const similarDoctors = doctor 
+    ? allDoctors.filter(d => d.id !== doctor.id && d.specialty === doctor.specialty).slice(0, 2)
+    : [];
+
+  if (loading) {
+    return (
+      <div className="flex-1 max-w-7xl w-full mx-auto px-4 md:px-8 py-8 flex flex-col items-center justify-center min-h-[50vh]">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-8 h-8 border-4 border-[#0A6E6E] border-t-transparent rounded-full animate-spin"></div>
+          <p className="text-xs text-gray-500 font-semibold uppercase tracking-wider">Syncing certified clinician profile...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (errorMsg || !doctor) {
+    return (
+      <div className="flex-1 max-w-4xl w-full mx-auto px-4 py-10" id="doctor-profile-root">
+        <div className="bg-white p-8 rounded-xl border border-dashed border-red-200 flex flex-col items-center justify-center text-center py-12 shadow-xs">
+          <span className="text-3xl mb-3">⚠️</span>
+          <h4 className="text-sm font-extrabold text-red-600 mb-1">Doctor profile not found.</h4>
+          <p className="text-xs text-gray-500 max-w-md leading-relaxed">
+            {errorMsg || "The requested certified clinician profile could not be retrieved from the database registry."}
+          </p>
+          <button
+            onClick={() => setView('doctors')}
+            className="mt-4 px-4 py-2 bg-[#0A6E6E] hover:bg-[#0A6E6E]/90 text-white font-extrabold text-xs rounded-lg transition-colors cursor-pointer"
+          >
+            Browse Doctor Directory
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex-1 max-w-7xl w-full mx-auto px-4 md:px-8 py-8" id="doctor-profile-root">

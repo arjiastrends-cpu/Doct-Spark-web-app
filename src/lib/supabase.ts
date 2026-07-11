@@ -120,6 +120,60 @@ export async function saveAppointmentToSupabase(apt: Appointment, doctor: any) {
   }
 }
 
+export async function fetchPatientAppointmentsFromSupabase(patientEmail: string): Promise<Appointment[]> {
+  const supabaseUrl = (import.meta as any).env?.VITE_SUPABASE_URL;
+  const hasSupabase = supabaseUrl && !supabaseUrl.includes('placeholder');
+  if (!hasSupabase) {
+    return [];
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('appointments')
+      .select('*, doctor:doctors(*)')
+      .eq('patient_id', patientEmail.trim().toLowerCase());
+
+    if (error) {
+      console.error('Error fetching appointments from Supabase:', error.message);
+      return [];
+    }
+
+    if (!data) return [];
+
+    return data.map((item: any) => {
+      const doc = item.doctor;
+      return {
+        id: item.id,
+        doctorId: item.doctor_id,
+        doctorName: doc?.name || item.doctor_name,
+        doctorSpecialty: doc?.specialty || item.doctor_specialty,
+        doctorPhoto: doc?.photo || item.doctor_photo,
+        patientId: item.patient_id,
+        patientName: item.patient_name,
+        patientAge: Number(item.patient_age) || 30,
+        patientGender: item.patient_gender || 'Male',
+        date: item.date,
+        time: item.time,
+        type: item.type as 'In-Clinic' | 'Video',
+        status: item.status as 'Pending' | 'Confirmed' | 'Completed' | 'Cancelled' | 'Expired',
+        reason: item.reason,
+        fee: Number(item.fee),
+        clinicName: item.clinic_name || undefined,
+        clinicAddress: item.clinic_address || undefined,
+        serialNo: item.serial_no ? Number(item.serial_no) : undefined,
+        roomId: item.room_id || undefined,
+        paymentMethod: item.payment_method || undefined,
+        paymentStatus: item.payment_status || undefined,
+        createdAt: item.created_at,
+        prescription: item.prescription ? (typeof item.prescription === 'string' ? JSON.parse(item.prescription) : item.prescription) : undefined
+      };
+    });
+  } catch (err) {
+    console.error('Exception fetching appointments:', err);
+    return [];
+  }
+}
+
 
 /**
  * =========================================================================

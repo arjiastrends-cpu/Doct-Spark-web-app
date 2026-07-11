@@ -36,7 +36,7 @@ import PartnerDashboard from './components/views/PartnerDashboard';
 import SuperAdminDashboard from './components/views/SuperAdminDashboard';
 import { processFirstAppointmentReferralReward, processPendingAppointmentsExpiry } from './data/walletUtils';
 import { checkUserTermsStatus, getTermsAcceptanceLogs, logTermsAcceptance } from './data/termsUtils';
-import { supabase, getUserRoleFromSupabase, saveDoctorToSupabase } from './lib/supabase';
+import { supabase, getUserRoleFromSupabase, saveDoctorToSupabase, fetchPatientAppointmentsFromSupabase } from './lib/supabase';
 import ForceTermsReacceptanceModal from './components/common/ForceTermsReacceptanceModal';
 
 import { MOCK_DOCTORS, INITIAL_APPOINTMENTS, MOCK_CLINICS } from './data/mockData';
@@ -279,6 +279,36 @@ export default function App() {
       }
     };
   }, []);
+
+  // Sync real-time patient appointments from Supabase on login
+  React.useEffect(() => {
+    let active = true;
+    async function syncPatientApts() {
+      if (userRole === 'patient' && userEmail) {
+        console.log('Fetching live patient appointments from Supabase for:', userEmail);
+        const liveApts = await fetchPatientAppointmentsFromSupabase(userEmail);
+        if (active && liveApts && liveApts.length > 0) {
+          // Merge live appointments with any locally booked appointments not yet written or offline
+          setAppointments(prev => {
+            const merged = [...prev];
+            liveApts.forEach(live => {
+              const existingIdx = merged.findIndex(a => a.id === live.id);
+              if (existingIdx >= 0) {
+                merged[existingIdx] = live;
+              } else {
+                merged.unshift(live);
+              }
+            });
+            return merged;
+          });
+        }
+      }
+    }
+    syncPatientApts();
+    return () => {
+      active = false;
+    };
+  }, [userEmail, userRole]);
 
   // Synchronize state from localStorage whenever view changes, ensuring partner/superadmin updates are immediately seen!
   React.useEffect(() => {
