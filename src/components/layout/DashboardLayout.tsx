@@ -57,34 +57,6 @@ export default function DashboardLayout({
       {/* 2. Responsive Layout Workspace Container */}
       <div className="flex-grow max-w-7xl w-full mx-auto px-4 md:px-8 py-8" id="dashboard-workspace-grid">
         
-        {/* Mobile Header Bar - Shown ONLY if there is a sidebar, and renders mobile tab title */}
-        {sidebar && (
-          <div className="lg:hidden flex justify-between items-center bg-white border border-[#D1E5E5] rounded-2xl px-4 py-3 mb-6 shadow-xs" id="mobile-layout-header">
-            <div className="flex items-center gap-2.5">
-              <button 
-                type="button"
-                onClick={() => setIsMobileSidebarOpen(true)}
-                className="p-2 bg-teal-50 text-[#0A6E6E] rounded-xl border border-teal-100 cursor-pointer"
-              >
-                <Menu className="w-5 h-5" />
-              </button>
-              <div>
-                <span className="text-[9px] text-gray-400 font-extrabold uppercase tracking-wider block leading-none mb-1">Health Portal</span>
-                <span className="text-xs font-black text-slate-800">
-                  {activeTabTitle || '📊 Workspace'}
-                </span>
-              </div>
-            </div>
-            <button
-              type="button"
-              onClick={() => setIsMobileSidebarOpen(true)}
-              className="text-xs font-extrabold bg-[#0A6E6E]/10 text-[#0A6E6E] px-3 py-1.5 rounded-xl border border-[#0A6E6E]/15 hover:bg-[#0A6E6E]/15 transition-all cursor-pointer"
-            >
-              Menu
-            </button>
-          </div>
-        )}
-
         {/* Local Mobile Sidebar Drawer */}
         {sidebar && isMobileSidebarOpen && (
           <div className="fixed inset-0 z-50 flex lg:hidden animate-fade-in" id="mobile-sidebar-drawer">
