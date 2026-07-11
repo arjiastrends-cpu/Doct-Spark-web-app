@@ -5,7 +5,6 @@
 
 import React from 'react';
 import Header from './components/layout/Header';
-import DashboardHeader from './components/layout/DashboardHeader';
 import Footer from './components/layout/Footer';
 import AnnouncementBar from './components/layout/AnnouncementBar';
 import Homepage from './components/views/Homepage';
@@ -894,6 +893,17 @@ export default function App() {
 
   const annProps = getAnnouncementBarProps();
 
+  const DASHBOARD_VIEWS = [
+    'superadmin-dashboard',
+    'partner-dashboard',
+    'doctor-dashboard',
+    'clinic-dashboard',
+    'patient-dashboard',
+    'pharmacy-dashboard',
+    'laboratory-dashboard',
+    'physiotherapy-dashboard'
+  ];
+
   if (loadingSession) {
     return (
       <div className="min-h-screen bg-[#F0F7F7] flex items-center justify-center font-sans" id="app-loading">
@@ -909,21 +919,7 @@ export default function App() {
     <div className="min-h-screen bg-[#F0F7F7] text-[#1A2B3C] font-sans flex flex-col relative" id="app-root">
       
       {/* Conditional Sticky Header (isolated components for public vs dashboard) */}
-      {['superadmin-dashboard', 'partner-dashboard', 'doctor-dashboard', 'clinic-dashboard', 'patient-dashboard'].includes(currentView) ? (
-        <DashboardHeader
-          currentView={currentView}
-          setView={setView}
-          userRole={userRole}
-          setUserRole={setUserRole}
-          userEmail={userEmail}
-          setUserEmail={setUserEmail}
-          notificationsCount={unreadNotificationsCount}
-          onOpenNotifications={() => {
-            setShowNotifications(!showNotifications);
-            handleMarkNotificationsRead();
-          }}
-        />
-      ) : (
+      {DASHBOARD_VIEWS.includes(currentView) ? null : (
         <Header 
           currentView={currentView}
           setView={setView}

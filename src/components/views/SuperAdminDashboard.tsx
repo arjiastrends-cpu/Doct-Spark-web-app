@@ -27,6 +27,7 @@ import {
 } from '../../data/walletUtils';
 import PartnerRegister from './PartnerRegister';
 import TermsManagementModule from './TermsManagementModule';
+import TestingCenter from './TestingCenter';
 import DashboardLayout from '../layout/DashboardLayout';
 import { Role } from '../../types';
 
@@ -181,7 +182,8 @@ export default function SuperAdminDashboard({
       'cms-pages': 'custom-pages',
       'settings-general': 'settings',
       'system-audit': 'audit-trail',
-      'verify-doctor': 'doctors-clinics'
+      'verify-doctor': 'doctors-clinics',
+      'testing-center': 'testing-center'
     };
     return mappings[tabId] || tabId;
   };
@@ -2294,6 +2296,14 @@ export default function SuperAdminDashboard({
         { id: 'system-maintenance', label: 'Maintenance Mode Controller', icon: Lock, isNew: true },
         { id: 'system-recycle-bin', label: 'Recycle Bin Data Recover', icon: Trash2, isNew: true },
         { id: 'system-import-export', label: 'Bulk Database Import/Export', icon: FileText, isNew: true }
+      ]
+    },
+    {
+      id: 'developer_tools',
+      label: 'Developer Tools',
+      icon: Cpu,
+      items: [
+        { id: 'testing-center', label: 'Testing Center', icon: Cpu }
       ]
     },
     {
@@ -6835,6 +6845,15 @@ Thank you for driving Doct Spark digital health healthcare operations!
             </div>
           </div>
         </div>
+      )}
+
+      {mappedTab === 'testing-center' && (
+        <TestingCenter 
+          setView={setView}
+          setUserRole={setUserRole}
+          setUserEmail={setUserEmail}
+          userEmail={userEmail || ''}
+        />
       )}
 
       {/* ==========================================
