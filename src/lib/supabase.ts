@@ -10,8 +10,15 @@ import { createClient } from '@supabase/supabase-js';
 import { Appointment } from '../types';
 
 // Graceful fallback for local development or during deployment before environment keys are populated
-const supabaseUrl = (import.meta as any).env?.VITE_SUPABASE_URL || 'https://placeholder-doctspark.supabase.co';
-const supabaseAnonKey = (import.meta as any).env?.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.placeholder-key';
+const rawUrl = (import.meta as any).env?.VITE_SUPABASE_URL;
+const supabaseUrl = (rawUrl && typeof rawUrl === 'string' && rawUrl.startsWith('http')) 
+  ? rawUrl 
+  : 'https://placeholder-doctspark.supabase.co';
+
+const rawKey = (import.meta as any).env?.VITE_SUPABASE_ANON_KEY;
+const supabaseAnonKey = (rawKey && typeof rawKey === 'string' && rawKey.trim() !== '') 
+  ? rawKey 
+  : 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.placeholder-key';
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 

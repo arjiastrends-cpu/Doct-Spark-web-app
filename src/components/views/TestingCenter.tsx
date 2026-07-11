@@ -55,8 +55,27 @@ export default function TestingCenter({
   }, []);
 
   // Sub-tabs for the Testing Center
-  type SubTab = 'generator' | 'accounts' | 'scenarios' | 'e2e' | 'reset';
+  type SubTab = 'generator' | 'accounts' | 'scenarios' | 'e2e' | 'supabase' | 'reset';
   const [activeSubTab, setActiveSubTab] = React.useState<SubTab>('generator');
+
+  // Supabase Diagnostics State
+  interface TableStatus {
+    name: string;
+    exists: boolean | null;
+    count: number | null;
+    error?: string;
+  }
+  const [tableStatuses, setTableStatuses] = React.useState<TableStatus[]>([
+    { name: 'profiles', exists: null, count: null },
+    { name: 'doctors', exists: null, count: null },
+    { name: 'clinics', exists: null, count: null },
+    { name: 'appointments', exists: null, count: null },
+    { name: 'patient_wallets', exists: null, count: null },
+    { name: 'wallet_transactions', exists: null, count: null }
+  ]);
+  const [testingSupabase, setTestingSupabase] = React.useState<boolean>(false);
+  const [supabaseTestLogs, setSupabaseTestLogs] = React.useState<string[]>([]);
+  const [copiedSQL, setCopiedSQL] = React.useState<boolean>(false);
 
   // Generator State
   const [profileType, setProfileType] = React.useState<string>('patient');
@@ -119,6 +138,49 @@ export default function TestingCenter({
   const saveBatches = (batches: string[]) => {
     setGeneratedBatches(batches);
     localStorage.setItem('ds_test_batches', JSON.stringify(batches));
+  };
+
+  const handleTestSupabaseConnection = async () => {
+    setTestingSupabase(true);
+    setSupabaseTestLogs(['Initializing connection checks...']);
+    const updatedStatuses = [...tableStatuses];
+    
+    const logs: string[] = [];
+    const url = (import.meta as any).env?.VITE_SUPABASE_URL || '';
+    logs.push(`Client URL: ${url || 'Using Placeholder URL (Not configured)'}`);
+    
+    for (let i = 0; i < updatedStatuses.length; i++) {
+      const tbl = updatedStatuses[i];
+      logs.push(`Testing table "${tbl.name}"...`);
+      try {
+        const { count, error } = await supabase
+          .from(tbl.name)
+          .select('*', { count: 'exact', head: true });
+          
+        if (error) {
+          tbl.exists = false;
+          tbl.count = 0;
+          tbl.error = error.message;
+          logs.push(`❌ Table "${tbl.name}" check failed: ${error.message}`);
+        } else {
+          tbl.exists = true;
+          tbl.count = count !== null ? count : 0;
+          tbl.error = undefined;
+          logs.push(`✅ Table "${tbl.name}" verified! Record count: ${count}`);
+        }
+      } catch (err: any) {
+        tbl.exists = false;
+        tbl.count = 0;
+        tbl.error = err.message || String(err);
+        logs.push(`❌ Table "${tbl.name}" exception: ${tbl.error}`);
+      }
+      setTableStatuses([...updatedStatuses]);
+      setSupabaseTestLogs([...logs]);
+    }
+    
+    logs.push('Connection diagnostics test complete!');
+    setSupabaseTestLogs(logs);
+    setTestingSupabase(false);
   };
 
   // Central Test Registry helpers
@@ -1906,6 +1968,12 @@ export default function TestingCenter({
             🖥️ Playwright
           </button>
           <button 
+            onClick={() => setActiveSubTab('supabase')}
+            className={`px-3 py-1.5 text-xs font-black rounded-xl transition-all cursor-pointer ${activeSubTab === 'supabase' ? 'bg-indigo-600 text-white shadow-xs' : 'text-slate-600 hover:bg-slate-100'}`}
+          >
+            ⚡ Supabase
+          </button>
+          <button 
             onClick={() => setActiveSubTab('reset')}
             className={`px-3 py-1.5 text-xs font-black rounded-xl transition-all cursor-pointer ${activeSubTab === 'reset' ? 'bg-[#991B1B] text-white shadow-xs' : 'text-slate-600 hover:bg-slate-100'}`}
           >
@@ -2325,6 +2393,294 @@ export default function TestingCenter({
                 </div>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* 5. SUPABASE DIAGNOSTICS PANEL */}
+      {activeSubTab === 'supabase' && (
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 animate-in fade-in duration-200">
+          {/* Diagnostic Controls */}
+          <div className="lg:col-span-5 bg-white border border-slate-200 rounded-3xl p-5 shadow-3xs space-y-4">
+            <div>
+              <h4 className="text-sm font-black text-slate-800 uppercase tracking-wider mb-1 flex items-center gap-1.5">
+                <Code className="w-4 h-4 text-indigo-600" /> Connection Diagnostician
+              </h4>
+              <p className="text-[10px] text-gray-400 font-medium">Verify your database schema, credentials health, and tables setup status in real-time.</p>
+            </div>
+
+            <div className="space-y-3 pt-2">
+              <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-2xl space-y-2.5">
+                <div>
+                  <label className="block text-[9px] uppercase font-black text-slate-400 font-mono tracking-wider">Supabase Endpoint URL</label>
+                  <p className="text-xs font-mono font-bold text-slate-700 break-all bg-white p-2 rounded-lg border border-slate-200 mt-1">
+                    {(import.meta as any).env?.VITE_SUPABASE_URL || <span className="text-amber-600 font-black">❌ Undefined or missing</span>}
+                  </p>
+                </div>
+                <div>
+                  <label className="block text-[9px] uppercase font-black text-slate-400 font-mono tracking-wider">Supabase Public API Key</label>
+                  <p className="text-xs font-mono font-bold text-slate-700 break-all bg-white p-2 rounded-lg border border-slate-200 mt-1">
+                    {(import.meta as any).env?.VITE_SUPABASE_ANON_KEY ? (
+                      <span className="text-emerald-700">🔒 Present (Obfuscated: {(import.meta as any).env?.VITE_SUPABASE_ANON_KEY.substring(0, 15)}...)</span>
+                    ) : (
+                      <span className="text-amber-600 font-black">❌ Undefined or missing</span>
+                    )}
+                  </p>
+                </div>
+              </div>
+
+              <button 
+                onClick={handleTestSupabaseConnection}
+                disabled={testingSupabase}
+                className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white rounded-xl text-xs font-black uppercase transition-all shadow-xs cursor-pointer flex items-center justify-center gap-2"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${testingSupabase ? 'animate-spin' : ''}`} />
+                {testingSupabase ? 'Testing Connection...' : 'Run Diagnostics Test'}
+              </button>
+            </div>
+
+            {/* Live diagnostic logger */}
+            <div className="border-t border-slate-100 pt-3 space-y-2">
+              <p className="text-[9px] font-black text-slate-400 uppercase font-mono tracking-wider">Live Connection Stream</p>
+              <div className="h-44 bg-slate-900 rounded-2xl p-3 border border-slate-800 font-mono text-[10px] text-emerald-400 overflow-y-auto space-y-1.5 scrollbar-thin">
+                {supabaseTestLogs.length === 0 ? (
+                  <div className="text-gray-500 italic">No tests run yet. Tap 'Run Diagnostics Test' to start.</div>
+                ) : (
+                  supabaseTestLogs.map((log, i) => (
+                    <div key={i} className="leading-relaxed">
+                      <span className="text-slate-600 mr-1.5">&gt;</span>
+                      {log}
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Database Schema & Action Panel */}
+          <div className="lg:col-span-7 space-y-6">
+            {/* Table Health Status List */}
+            <div className="bg-white border border-slate-200 rounded-3xl p-5 shadow-3xs">
+              <h4 className="text-sm font-black text-slate-800 uppercase tracking-wider mb-3 flex items-center gap-1.5">
+                <Activity className="w-4 h-4 text-indigo-600" /> Database Tables Status Checklist
+              </h4>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {tableStatuses.map((tbl) => {
+                  let badge = (
+                    <span className="text-[9px] bg-slate-100 text-slate-500 font-black px-2 py-0.5 rounded-md uppercase">
+                      Untested
+                    </span>
+                  );
+                  if (tbl.exists === true) {
+                    badge = (
+                      <span className="text-[9px] bg-emerald-50 text-emerald-700 border border-emerald-200 font-black px-2 py-0.5 rounded-md uppercase">
+                        ✅ Verified ({tbl.count} rows)
+                      </span>
+                    );
+                  } else if (tbl.exists === false) {
+                    badge = (
+                      <span className="text-[9px] bg-red-50 text-red-700 border border-red-200 font-black px-2 py-0.5 rounded-md uppercase">
+                        ❌ Missing
+                      </span>
+                    );
+                  }
+
+                  return (
+                    <div key={tbl.name} className="p-3 border border-slate-200 bg-slate-50 rounded-2xl space-y-1.5 flex flex-col justify-between">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-slate-700 font-mono">"{tbl.name}"</span>
+                        {badge}
+                      </div>
+                      {tbl.error && (
+                        <p className="text-[9px] font-mono text-red-500 leading-tight bg-red-50 p-1.5 rounded-md border border-red-100 break-words">
+                          {tbl.error}
+                        </p>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* SQL Script Copier Card */}
+            <div className="bg-white border border-slate-200 rounded-3xl p-5 shadow-3xs space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h4 className="text-sm font-black text-slate-800 uppercase tracking-wider mb-0.5 flex items-center gap-1.5">
+                    <Clipboard className="w-4 h-4 text-indigo-600" /> Supabase SQL Schema Editor Script
+                  </h4>
+                  <p className="text-[10px] text-gray-400 font-medium">Paste this DDL snippet into your Supabase SQL Editor to instantly setup all necessary relational tables and RLS security rules.</p>
+                </div>
+                <button 
+                  onClick={() => {
+                    const sqlScript = `CREATE TABLE clinics (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  address TEXT NOT NULL,
+  city TEXT NOT NULL,
+  state TEXT NOT NULL,
+  pincode TEXT NOT NULL,
+  phone TEXT NOT NULL,
+  partner_email TEXT NOT NULL,
+  verified BOOLEAN DEFAULT FALSE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE doctors (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  specialty TEXT NOT NULL,
+  experience INT NOT NULL,
+  rating NUMERIC(3,2) DEFAULT 5.0,
+  consultation_fee NUMERIC(10,2) NOT NULL,
+  video_fee NUMERIC(10,2) NOT NULL,
+  clinic_address TEXT,
+  photo TEXT,
+  mci_registration TEXT UNIQUE,
+  email TEXT UNIQUE NOT NULL,
+  phone TEXT,
+  approved BOOLEAN DEFAULT FALSE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE appointments (
+  id TEXT PRIMARY KEY,
+  doctor_id TEXT REFERENCES doctors(id),
+  doctor_name TEXT NOT NULL,
+  doctor_specialty TEXT NOT NULL,
+  doctor_photo TEXT,
+  patient_id TEXT NOT NULL,
+  patient_name TEXT NOT NULL,
+  patient_age INT NOT NULL,
+  patient_gender TEXT NOT NULL,
+  date DATE NOT NULL,
+  time TEXT NOT NULL,
+  type TEXT CHECK (type IN ('In-Clinic', 'Video')),
+  status TEXT DEFAULT 'Pending' CHECK (status IN ('Pending', 'Confirmed', 'Completed', 'Cancelled', 'Expired')),
+  reason TEXT NOT NULL,
+  fee NUMERIC(10,2) NOT NULL,
+  clinic_name TEXT,
+  clinic_address TEXT,
+  serial_no INT,
+  room_id TEXT,
+  payment_method TEXT NOT NULL,
+  payment_status TEXT NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE patient_wallets (
+  patient_email TEXT PRIMARY KEY,
+  patient_name TEXT NOT NULL,
+  balance NUMERIC(12,2) DEFAULT 0.00 CHECK (balance >= 0),
+  referral_earnings NUMERIC(12,2) DEFAULT 0.00 CHECK (referral_earnings >= 0),
+  refund_earnings NUMERIC(12,2) DEFAULT 0.00 CHECK (refund_earnings >= 0),
+  referral_code TEXT UNIQUE NOT NULL,
+  referred_by_code TEXT REFERENCES patient_wallets(referral_code) ON DELETE SET NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE wallet_transactions (
+  id TEXT PRIMARY KEY,
+  patient_email TEXT REFERENCES patient_wallets(patient_email) ON DELETE CASCADE,
+  timestamp TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  type TEXT CHECK (type IN ('Credit', 'Debit')),
+  amount NUMERIC(12,2) NOT NULL,
+  source TEXT CHECK (source IN ('Referral', 'Platform Refund', 'Manual Admin Credit', 'Manual Admin Debit', 'Platform Fee Payment')),
+  description TEXT NOT NULL,
+  status TEXT DEFAULT 'Completed' CHECK (status IN ('Approved', 'Suspended', 'Cancelled', 'Completed'))
+);
+
+CREATE TABLE profiles (
+  id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  email TEXT UNIQUE NOT NULL,
+  role TEXT NOT NULL DEFAULT 'patient',
+  partner_type TEXT,
+  name TEXT,
+  full_name TEXT,
+  terms_accepted BOOLEAN DEFAULT FALSE,
+  accepted_terms_version TEXT,
+  accepted_terms_at TIMESTAMP WITH TIME ZONE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+ALTER TABLE patient_wallets ENABLE ROW LEVEL SECURITY;
+ALTER TABLE wallet_transactions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE appointments ENABLE ROW LEVEL SECURITY;
+ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;`;
+                    navigator.clipboard.writeText(sqlScript);
+                    setCopiedSQL(true);
+                    setTimeout(() => setCopiedSQL(false), 2000);
+                  }}
+                  className="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-[10px] font-black uppercase rounded-lg border border-indigo-200 transition-all shrink-0 cursor-pointer"
+                >
+                  {copiedSQL ? '✅ Copied!' : '📋 Copy Schema SQL'}
+                </button>
+              </div>
+
+              <div className="bg-slate-900 rounded-2xl p-4 font-mono text-[10px] text-slate-300 h-64 overflow-y-auto leading-relaxed border border-slate-800 scrollbar-thin">
+                <span className="text-slate-500">-- Click "Copy Schema SQL" at top right, then execute inside your Supabase dashboard SQL editor.</span>
+                <pre className="mt-2 text-indigo-300">
+{`-- 1. CLINICS TABLE
+CREATE TABLE clinics (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  address TEXT NOT NULL,
+  city TEXT NOT NULL,
+  state TEXT NOT NULL,
+  pincode TEXT NOT NULL,
+  phone TEXT NOT NULL,
+  partner_email TEXT NOT NULL,
+  verified BOOLEAN DEFAULT FALSE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 2. DOCTORS TABLE
+CREATE TABLE doctors (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  specialty TEXT NOT NULL,
+  experience INT NOT NULL,
+  rating NUMERIC(3,2) DEFAULT 5.0,
+  consultation_fee NUMERIC(10,2) NOT NULL,
+  video_fee NUMERIC(10,2) NOT NULL,
+  clinic_address TEXT,
+  photo TEXT,
+  mci_registration TEXT UNIQUE,
+  email TEXT UNIQUE NOT NULL,
+  phone TEXT,
+  approved BOOLEAN DEFAULT FALSE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 3. APPOINTMENTS TABLE
+CREATE TABLE appointments (
+  id TEXT PRIMARY KEY,
+  doctor_id TEXT REFERENCES doctors(id),
+  doctor_name TEXT NOT NULL,
+  doctor_specialty TEXT NOT NULL,
+  doctor_photo TEXT,
+  patient_id TEXT NOT NULL,
+  patient_name TEXT NOT NULL,
+  patient_age INT NOT NULL,
+  patient_gender TEXT NOT NULL,
+  date DATE NOT NULL,
+  time TEXT NOT NULL,
+  type TEXT CHECK (type IN ('In-Clinic', 'Video')),
+  status TEXT DEFAULT 'Pending' CHECK (status IN ('Pending', 'Confirmed', 'Completed', 'Cancelled', 'Expired')),
+  reason TEXT NOT NULL,
+  fee NUMERIC(10,2) NOT NULL,
+  clinic_name TEXT,
+  clinic_address TEXT,
+  serial_no INT,
+  room_id TEXT,
+  payment_method TEXT NOT NULL,
+  payment_status TEXT NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);`}
+                </pre>
+              </div>
+            </div>
           </div>
         </div>
       )}

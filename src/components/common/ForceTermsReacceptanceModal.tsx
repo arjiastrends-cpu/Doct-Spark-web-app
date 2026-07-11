@@ -23,7 +23,7 @@ export default function ForceTermsReacceptanceModal({
     if (!agreed) return;
     setLoading(true);
     
-    console.log('Starting Patient Terms Acceptance workflow...');
+    console.log('Starting Terms Acceptance workflow...');
     console.log('User email:', userEmail);
     console.log('User role:', userRole);
     console.log('Latest published version:', doc.version);
@@ -32,7 +32,14 @@ export default function ForceTermsReacceptanceModal({
       const supabaseUrl = (import.meta as any).env?.VITE_SUPABASE_URL;
       const hasSupabase = supabaseUrl && !supabaseUrl.includes('placeholder');
       
-      if (hasSupabase && userRole === 'patient') {
+      const rolesWithProfiles = [
+        'patient', 'partner', 'doctor', 'clinic', 'pharmacy', 
+        'laboratory', 'physiotherapy', 'superadmin',
+        'state_partner', 'district_partner', 'city_partner',
+        'state', 'district', 'city'
+      ];
+      
+      if (hasSupabase && userRole && rolesWithProfiles.includes(userRole.toLowerCase())) {
         console.log('Supabase is configured. Attempting to get auth user...');
         const { data: { user }, error: userError } = await supabase.auth.getUser();
         
@@ -62,7 +69,7 @@ export default function ForceTermsReacceptanceModal({
         console.log('Successfully updated profiles table:', data);
         
         // 2. Refetch profile to verify and ensure cache is clear
-        console.log('Refetching updated patient profile...');
+        console.log('Refetching updated user profile...');
         const { data: refetchedProfile, error: refetchError } = await supabase
           .from('profiles')
           .select('*')
@@ -84,14 +91,31 @@ export default function ForceTermsReacceptanceModal({
           console.log('Session refreshed successfully');
         }
       } else {
-        console.log('Supabase not configured or user is not a patient. Storing in local state only.');
+        console.log('Supabase not configured or user does not have a profile. Storing in local state only.');
       }
       
       // 4. Log local terms acceptance so synchronous checks succeed immediately
+      const roleToDocIdMap: Record<string, string> = {
+        'patient': 'patient',
+        'doctor': 'doctor',
+        'clinic': 'clinic',
+        'physiotherapy': 'physiotherapy',
+        'pharmacy': 'pharmacy',
+        'partner': 'partner',
+        'state_partner': 'partner',
+        'district_partner': 'partner',
+        'city_partner': 'partner',
+        'state': 'partner',
+        'district': 'partner',
+        'city': 'partner',
+        'laboratory': 'laboratory'
+      };
+      const docId = roleToDocIdMap[userRole?.toLowerCase() || ''] || 'partner';
+
       logTermsAcceptance(
         userEmail,
         userEmail.split('@')[0],
-        userRole,
+        docId,
         doc.version
       );
       

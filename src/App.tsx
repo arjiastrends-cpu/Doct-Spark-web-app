@@ -36,7 +36,7 @@ import PartnerDashboard from './components/views/PartnerDashboard';
 import SuperAdminDashboard from './components/views/SuperAdminDashboard';
 import { processFirstAppointmentReferralReward, processPendingAppointmentsExpiry } from './data/walletUtils';
 import { checkUserTermsStatus, getTermsAcceptanceLogs, logTermsAcceptance } from './data/termsUtils';
-import { supabase, getUserRoleFromSupabase } from './lib/supabase';
+import { supabase, getUserRoleFromSupabase, saveDoctorToSupabase } from './lib/supabase';
 import ForceTermsReacceptanceModal from './components/common/ForceTermsReacceptanceModal';
 
 import { MOCK_DOCTORS, INITIAL_APPOINTMENTS, MOCK_CLINICS } from './data/mockData';
@@ -119,6 +119,7 @@ export default function App() {
   };
 
   const [loadingSession, setLoadingSession] = React.useState(true);
+  const [termsUpdateTrigger, setTermsUpdateTrigger] = React.useState(0);
 
   // Core Data State (allows adding, deleting, updating doctors and appointments interactively!)
   const [appointments, setAppointments] = React.useState<Appointment[]>(() => {
@@ -180,20 +181,37 @@ export default function App() {
                     .maybeSingle();
                   
                   if (profileData && profileData.terms_accepted && profileData.accepted_terms_version && active) {
+                    const roleToDocIdMap: Record<string, string> = {
+                      'patient': 'patient',
+                      'doctor': 'doctor',
+                      'clinic': 'clinic',
+                      'physiotherapy': 'physiotherapy',
+                      'pharmacy': 'pharmacy',
+                      'partner': 'partner',
+                      'state_partner': 'partner',
+                      'district_partner': 'partner',
+                      'city_partner': 'partner',
+                      'state': 'partner',
+                      'district': 'partner',
+                      'city': 'partner',
+                      'laboratory': 'laboratory'
+                    };
+                    const docId = roleToDocIdMap[resolvedRole.toLowerCase()] || 'patient';
                     const logs = getTermsAcceptanceLogs();
                     const alreadyLogged = logs.some(
                       l => l.userEmail.toLowerCase() === email.toLowerCase() && 
-                           l.registrationType === 'patient' && 
+                           (l.registrationType === docId || 
+                            (docId === 'partner' && ['partner', 'state_partner', 'district_partner', 'city_partner', 'state', 'district', 'city'].includes(l.registrationType))) && 
                            l.acceptedVersion === profileData.accepted_terms_version
                     );
                     if (!alreadyLogged) {
                       logTermsAcceptance(
                         email,
                         profileData.name || email.split('@')[0],
-                        'patient',
+                        docId,
                         profileData.accepted_terms_version
                       );
-                      console.log('Synced restored terms acceptance from profiles table.');
+                      console.log(`Synced restored ${docId} terms acceptance from profiles table.`);
                     }
                   }
                 } catch (termsSyncErr) {
@@ -330,11 +348,17 @@ export default function App() {
     }
   };
 
-  const handleAddDoctor = (newDoc: Doctor) => {
+  const handleAddDoctor = async (newDoc: Doctor) => {
     setDoctors(prev => [newDoc, ...prev]);
     // Generate subscription commission if paid
     if (newDoc.subscriptionPaid) {
       generateCommission('Subscription', newDoc.id, `Dr. ${newDoc.name}`, 5000, newDoc.onboardedBy);
+    }
+    // Save to Supabase database
+    try {
+      await saveDoctorToSupabase(newDoc);
+    } catch (err) {
+      console.error('Failed to save doctor to Supabase in handleAddDoctor:', err);
     }
   };
 
@@ -522,7 +546,8 @@ export default function App() {
               userEmail={userEmail} 
               userRole={userRole}
               onAccept={() => {
-                // Refresh routing state
+                // Force a reactive state update to re-evaluate checkUserTermsStatus and dismiss the modal immediately
+                setTermsUpdateTrigger(prev => prev + 1);
                 setView(currentView);
               }} 
             />

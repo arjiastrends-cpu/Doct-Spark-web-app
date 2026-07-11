@@ -363,6 +363,12 @@ export function checkUserTermsStatus(userEmail: string | null, role: string | nu
     'physiotherapy': 'physiotherapy',
     'pharmacy': 'pharmacy',
     'partner': 'partner',
+    'state_partner': 'partner',
+    'district_partner': 'partner',
+    'city_partner': 'partner',
+    'state': 'partner',
+    'district': 'partner',
+    'city': 'partner',
     'laboratory': 'laboratory'
   };
 
@@ -382,7 +388,8 @@ export function checkUserTermsStatus(userEmail: string | null, role: string | nu
   // Find acceptance of this user for this document type
   const userAcceptance = logs.find(
     l => l.userEmail.toLowerCase() === userEmail.toLowerCase() && 
-         l.registrationType === docId && 
+         (l.registrationType === docId || 
+          (docId === 'partner' && ['partner', 'state_partner', 'district_partner', 'city_partner', 'state', 'district', 'city'].includes(l.registrationType))) && 
          l.status === 'Accepted'
   );
 

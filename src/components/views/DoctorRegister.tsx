@@ -11,8 +11,9 @@ import { Partner } from '../../types';
 import { validateReferralId } from '../../data/referralUtils';
 import { addAuditLog } from '../../data/commissionUtils';
 import { saveInAppNotification } from '../../data/targetUtils';
-import { logTermsAcceptance } from '../../data/termsUtils';
+import { logTermsAcceptance, getTermsDocuments } from '../../data/termsUtils';
 import TermsConsentCheckbox from '../common/TermsConsentCheckbox';
+import { supabase } from '../../lib/supabase';
 
 interface DoctorRegisterProps {
   setView: (view: string) => void;
@@ -500,7 +501,7 @@ export default function DoctorRegister({ setView, onSubmitDoctor, predefinedPart
     setErrorMessage('');
   };
 
-  const handleVerifyDoctorOtps = (e: React.FormEvent) => {
+  const handleVerifyDoctorOtps = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage('');
 
@@ -641,6 +642,54 @@ export default function DoctorRegister({ setView, onSubmitDoctor, predefinedPart
         localStorage.setItem('ds_local_accounts', JSON.stringify(localAccounts));
       } catch (err) {
         console.warn('Failed to save doctor to local accounts:', err);
+      }
+
+      // Attempt live Supabase Auth signup in the background if configured
+      try {
+        const supabaseUrl = (import.meta as any).env?.VITE_SUPABASE_URL;
+        if (supabaseUrl && !supabaseUrl.includes('placeholder')) {
+          console.log('Signing up doctor in Supabase Auth:', formData.email);
+          const { data: authData, error: authError } = await supabase.auth.signUp({
+            email: formData.email.toLowerCase().trim(),
+            password: formData.password,
+            options: {
+              data: {
+                name: formData.name.trim(),
+                role: 'doctor'
+              }
+            }
+          });
+          if (!authError && authData?.user) {
+            console.log('Doctor signed up successfully in Supabase Auth. Creating profile...');
+            try {
+              const docTerms = getTermsDocuments().find(d => d.id === 'doctor');
+              const latestVersion = docTerms && docTerms.publishingStatus === 'Published' ? docTerms.version : '1.0';
+              
+              const { error: upsertErr } = await supabase.from('profiles').upsert({
+                id: authData.user.id,
+                email: formData.email.toLowerCase().trim(),
+                role: 'doctor',
+                name: formData.name.trim(),
+                full_name: formData.name.trim(),
+                created_at: new Date().toISOString(),
+                terms_accepted: true,
+                accepted_terms_version: latestVersion,
+                accepted_terms_at: new Date().toISOString()
+              });
+              if (upsertErr) {
+                console.warn('Upsert profile failed:', upsertErr.message);
+              } else {
+                console.log('Doctor profile created in profiles table.');
+              }
+            } catch (upsertCatchErr) {
+              console.warn('Failed to upsert doctor profile:', upsertCatchErr);
+            }
+          } else if (authError) {
+            console.warn('Supabase Auth signUp returned error:', authError.message);
+          }
+        }
+      } catch (err) {
+        console.warn('Background Supabase signup failed for doctor:', err);
       }
 
       // Log official T&C acceptance
