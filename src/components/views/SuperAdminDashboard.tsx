@@ -1,5 +1,6 @@
 import React from 'react';
 import PartnerManagementModule from './PartnerManagementModule';
+import DatabaseManager from '../admin/DatabaseManager';
 import { 
   ShieldAlert, Landmark, Users, TrendingUp, DollarSign, Stethoscope, 
   Building2, CheckCircle2, AlertCircle, Eye, ShieldCheck, Mail, Smartphone,
@@ -2307,6 +2308,19 @@ export default function SuperAdminDashboard({
       ]
     },
     {
+      id: 'database_management',
+      label: 'Database Engine',
+      icon: Database,
+      items: [
+        { id: 'db-dashboard', label: 'Database Dashboard', icon: Database },
+        { id: 'db-tables', label: 'Tables & Records', icon: Layers },
+        { id: 'db-relationships', label: 'Table Relationships', icon: Code },
+        { id: 'db-storage', label: 'File Storage Manager', icon: FileText },
+        { id: 'db-backups', label: 'Backup & Restore Center', icon: ShieldAlert },
+        { id: 'db-audit-logs', label: 'Database Audit Logs', icon: History }
+      ]
+    },
+    {
       id: 'support_mgmt',
       label: 'Support',
       icon: LifeBuoy,
@@ -2599,6 +2613,7 @@ export default function SuperAdminDashboard({
     const isSystemTab = activeTab.startsWith('system-');
     const isSupportTab = activeTab.startsWith('support-');
     const isProfileTab = activeTab.startsWith('profile-');
+    const isDbTab = activeTab.startsWith('db-');
 
     const triggerAction = (actionName: string, detail: string) => {
       addAuditLog(actionName, 'Super Admin', `Triggered dynamic action: ${detail}`);
@@ -3069,8 +3084,12 @@ export default function SuperAdminDashboard({
           </div>
         )}
 
+        {isDbTab && (
+          <DatabaseManager userEmail="master.admin@doctspark.com" />
+        )}
+
         {/* Fallback general template if no prefix matched */}
-        {!isUserTab && !isPartnerTab && !isBookingTab && !isFinanceTab && !isReferralTab && !isNotifyTab && !isRegisterTab && !isSystemTab && !isSupportTab && !isProfileTab && (
+        {!isUserTab && !isPartnerTab && !isBookingTab && !isFinanceTab && !isReferralTab && !isNotifyTab && !isRegisterTab && !isSystemTab && !isSupportTab && !isProfileTab && !isDbTab && (
           <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-3xs space-y-4">
             <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider">Administrative Vault Card</h3>
             <div className="p-8 text-center bg-slate-50 rounded-2xl border border-slate-100">

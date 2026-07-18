@@ -6,6 +6,7 @@ import {
   Plus, X, ChevronRight, Lock, FileText, ChevronDown, Award, Sparkles, AlertCircle, CheckCircle
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import supabaseMigrationSql from '../../../supabase_migration.sql?raw';
 
 interface TestingCenterProps {
   setView: (view: string) => void;
@@ -69,111 +70,84 @@ export default function TestingCenter({
   const [tableStatuses, setTableStatuses] = React.useState<TableStatus[]>([
     // Core Users
     { name: 'profiles', module: 'Core Users', status: 'NOT CONFIGURED', count: null },
+    { name: 'user_settings', module: 'Core Users', status: 'NOT CONFIGURED', count: null },
     { name: 'patients', module: 'Core Users', status: 'NOT CONFIGURED', count: null },
-    { name: 'user_roles', module: 'Core Users', status: 'NOT CONFIGURED', count: null },
-    { name: 'user_addresses', module: 'Core Users', status: 'NOT CONFIGURED', count: null },
-    { name: 'user_documents', module: 'Core Users', status: 'NOT CONFIGURED', count: null },
+    { name: 'patient_histories', module: 'Core Users', status: 'NOT CONFIGURED', count: null },
+    { name: 'patient_vitals', module: 'Core Users', status: 'NOT CONFIGURED', count: null },
     // Doctors
     { name: 'doctors', module: 'Doctors', status: 'NOT CONFIGURED', count: null },
-    { name: 'doctor_documents', module: 'Doctors', status: 'NOT CONFIGURED', count: null },
-    { name: 'doctor_qualifications', module: 'Doctors', status: 'NOT CONFIGURED', count: null },
-    { name: 'doctor_experience', module: 'Doctors', status: 'NOT CONFIGURED', count: null },
-    { name: 'doctor_specializations', module: 'Doctors', status: 'NOT CONFIGURED', count: null },
-    { name: 'doctor_availability', module: 'Doctors', status: 'NOT CONFIGURED', count: null },
-    { name: 'doctor_schedules', module: 'Doctors', status: 'NOT CONFIGURED', count: null },
-    { name: 'doctor_time_slots', module: 'Doctors', status: 'NOT CONFIGURED', count: null },
-    { name: 'doctor_clinics', module: 'Doctors', status: 'NOT CONFIGURED', count: null },
     { name: 'doctor_verifications', module: 'Doctors', status: 'NOT CONFIGURED', count: null },
-    { name: 'doctor_reviews', module: 'Doctors', status: 'NOT CONFIGURED', count: null },
     // Clinics and Hospitals
     { name: 'clinics', module: 'Clinics and Hospitals', status: 'NOT CONFIGURED', count: null },
-    { name: 'clinic_documents', module: 'Clinics and Hospitals', status: 'NOT CONFIGURED', count: null },
-    { name: 'clinic_services', module: 'Clinics and Hospitals', status: 'NOT CONFIGURED', count: null },
-    { name: 'clinic_doctors', module: 'Clinics and Hospitals', status: 'NOT CONFIGURED', count: null },
     { name: 'clinic_verifications', module: 'Clinics and Hospitals', status: 'NOT CONFIGURED', count: null },
     { name: 'hospitals', module: 'Clinics and Hospitals', status: 'NOT CONFIGURED', count: null },
-    { name: 'hospital_documents', module: 'Clinics and Hospitals', status: 'NOT CONFIGURED', count: null },
-    { name: 'hospital_services', module: 'Clinics and Hospitals', status: 'NOT CONFIGURED', count: null },
-    { name: 'hospital_doctors', module: 'Clinics and Hospitals', status: 'NOT CONFIGURED', count: null },
+    { name: 'physiotherapy_centers', module: 'Clinics and Hospitals', status: 'NOT CONFIGURED', count: null },
+    { name: 'physio_verifications', module: 'Clinics and Hospitals', status: 'NOT CONFIGURED', count: null },
     // Appointments
+    { name: 'appointment_slots', module: 'Appointments', status: 'NOT CONFIGURED', count: null },
     { name: 'appointments', module: 'Appointments', status: 'NOT CONFIGURED', count: null },
-    { name: 'appointment_status_history', module: 'Appointments', status: 'NOT CONFIGURED', count: null },
-    { name: 'appointment_payments', module: 'Appointments', status: 'NOT CONFIGURED', count: null },
-    { name: 'appointment_cancellations', module: 'Appointments', status: 'NOT CONFIGURED', count: null },
-    { name: 'appointment_reschedules', module: 'Appointments', status: 'NOT CONFIGURED', count: null },
-    { name: 'appointment_notes', module: 'Appointments', status: 'NOT CONFIGURED', count: null },
-    { name: 'appointment_documents', module: 'Appointments', status: 'NOT CONFIGURED', count: null },
+    { name: 'video_consultations', module: 'Appointments', status: 'NOT CONFIGURED', count: null },
+    { name: 'consultation_notes', module: 'Appointments', status: 'NOT CONFIGURED', count: null },
     // Partners
     { name: 'partners', module: 'Partners', status: 'NOT CONFIGURED', count: null },
-    { name: 'partner_documents', module: 'Partners', status: 'NOT CONFIGURED', count: null },
-    { name: 'partner_verifications', module: 'Partners', status: 'NOT CONFIGURED', count: null },
     { name: 'partner_hierarchy', module: 'Partners', status: 'NOT CONFIGURED', count: null },
-    { name: 'partner_referrals', module: 'Partners', status: 'NOT CONFIGURED', count: null },
-    { name: 'partner_onboardings', module: 'Partners', status: 'NOT CONFIGURED', count: null },
-    { name: 'partner_commissions', module: 'Partners', status: 'NOT CONFIGURED', count: null },
-    { name: 'partner_commission_transactions', module: 'Partners', status: 'NOT CONFIGURED', count: null },
     { name: 'partner_targets', module: 'Partners', status: 'NOT CONFIGURED', count: null },
-    { name: 'partner_rewards', module: 'Partners', status: 'NOT CONFIGURED', count: null },
-    { name: 'partner_payouts', module: 'Partners', status: 'NOT CONFIGURED', count: null },
+    { name: 'partner_settlements', module: 'Partners', status: 'NOT CONFIGURED', count: null },
+    { name: 'partner_commission_rules', module: 'Partners', status: 'NOT CONFIGURED', count: null },
+    { name: 'partner_commission_records', module: 'Partners', status: 'NOT CONFIGURED', count: null },
     // Wallet and Referrals
     { name: 'patient_wallets', module: 'Wallet and Referrals', status: 'NOT CONFIGURED', count: null },
     { name: 'wallet_transactions', module: 'Wallet and Referrals', status: 'NOT CONFIGURED', count: null },
-    { name: 'wallet_usage', module: 'Wallet and Referrals', status: 'NOT CONFIGURED', count: null },
     { name: 'patient_referrals', module: 'Wallet and Referrals', status: 'NOT CONFIGURED', count: null },
     { name: 'referral_rewards', module: 'Wallet and Referrals', status: 'NOT CONFIGURED', count: null },
     // Payments and Finance
     { name: 'payments', module: 'Payments and Finance', status: 'NOT CONFIGURED', count: null },
-    { name: 'payment_transactions', module: 'Payments and Finance', status: 'NOT CONFIGURED', count: null },
-    { name: 'payment_refunds', module: 'Payments and Finance', status: 'NOT CONFIGURED', count: null },
-    { name: 'platform_fees', module: 'Payments and Finance', status: 'NOT CONFIGURED', count: null },
-    { name: 'revenue_records', module: 'Payments and Finance', status: 'NOT CONFIGURED', count: null },
-    { name: 'commission_rules', module: 'Payments and Finance', status: 'NOT CONFIGURED', count: null },
-    { name: 'commission_distributions', module: 'Payments and Finance', status: 'NOT CONFIGURED', count: null },
+    { name: 'appointment_payments', module: 'Payments and Finance', status: 'NOT CONFIGURED', count: null },
+    { name: 'refunds', module: 'Payments and Finance', status: 'NOT CONFIGURED', count: null },
     { name: 'payouts', module: 'Payments and Finance', status: 'NOT CONFIGURED', count: null },
-    { name: 'invoices', module: 'Payments and Finance', status: 'NOT CONFIGURED', count: null },
+    { name: 'subscription_plans', module: 'Payments and Finance', status: 'NOT CONFIGURED', count: null },
+    { name: 'tenant_subscriptions', module: 'Payments and Finance', status: 'NOT CONFIGURED', count: null },
     // Laboratory
     { name: 'laboratories', module: 'Laboratory', status: 'NOT CONFIGURED', count: null },
-    { name: 'laboratory_documents', module: 'Laboratory', status: 'NOT CONFIGURED', count: null },
-    { name: 'laboratory_verifications', module: 'Laboratory', status: 'NOT CONFIGURED', count: null },
-    { name: 'lab_tests', module: 'Laboratory', status: 'NOT CONFIGURED', count: null },
-    { name: 'lab_test_packages', module: 'Laboratory', status: 'NOT CONFIGURED', count: null },
-    { name: 'lab_package_items', module: 'Laboratory', status: 'NOT CONFIGURED', count: null },
-    { name: 'lab_collection_agents', module: 'Laboratory', status: 'NOT CONFIGURED', count: null },
-    { name: 'lab_bookings', module: 'Laboratory', status: 'NOT CONFIGURED', count: null },
-    { name: 'lab_booking_items', module: 'Laboratory', status: 'NOT CONFIGURED', count: null },
-    { name: 'lab_sample_collections', module: 'Laboratory', status: 'NOT CONFIGURED', count: null },
+    { name: 'lab_verifications', module: 'Laboratory', status: 'NOT CONFIGURED', count: null },
     { name: 'lab_reports', module: 'Laboratory', status: 'NOT CONFIGURED', count: null },
-    { name: 'lab_payments', module: 'Laboratory', status: 'NOT CONFIGURED', count: null },
     // Pharmacy
     { name: 'pharmacies', module: 'Pharmacy', status: 'NOT CONFIGURED', count: null },
-    { name: 'pharmacy_documents', module: 'Pharmacy', status: 'NOT CONFIGURED', count: null },
-    { name: 'pharmacy_staff', module: 'Pharmacy', status: 'NOT CONFIGURED', count: null },
-    { name: 'medicines', module: 'Pharmacy', status: 'NOT CONFIGURED', count: null },
-    { name: 'medicine_categories', module: 'Pharmacy', status: 'NOT CONFIGURED', count: null },
-    { name: 'pharmacy_inventory', module: 'Pharmacy', status: 'NOT CONFIGURED', count: null },
-    { name: 'medicine_orders', module: 'Pharmacy', status: 'NOT CONFIGURED', count: null },
-    { name: 'medicine_order_items', module: 'Pharmacy', status: 'NOT CONFIGURED', count: null },
-    { name: 'delivery_agents', module: 'Pharmacy', status: 'NOT CONFIGURED', count: null },
-    { name: 'medicine_deliveries', module: 'Pharmacy', status: 'NOT CONFIGURED', count: null },
-    { name: 'pharmacy_payments', module: 'Pharmacy', status: 'NOT CONFIGURED', count: null },
+    { name: 'pharmacy_verifications', module: 'Pharmacy', status: 'NOT CONFIGURED', count: null },
+    { name: 'prescriptions', module: 'Pharmacy', status: 'NOT CONFIGURED', count: null },
+    { name: 'prescription_items', module: 'Pharmacy', status: 'NOT CONFIGURED', count: null },
     // Notifications
     { name: 'notifications', module: 'Notifications', status: 'NOT CONFIGURED', count: null },
-    { name: 'notification_preferences', module: 'Notifications', status: 'NOT CONFIGURED', count: null },
-    { name: 'notification_delivery_logs', module: 'Notifications', status: 'NOT CONFIGURED', count: null },
+    { name: 'sms_logs', module: 'Notifications', status: 'NOT CONFIGURED', count: null },
+    { name: 'email_logs', module: 'Notifications', status: 'NOT CONFIGURED', count: null },
+    { name: 'push_logs', module: 'Notifications', status: 'NOT CONFIGURED', count: null },
+    { name: 'chat_rooms', module: 'Notifications', status: 'NOT CONFIGURED', count: null },
+    { name: 'chat_participants', module: 'Notifications', status: 'NOT CONFIGURED', count: null },
+    { name: 'chat_messages', module: 'Notifications', status: 'NOT CONFIGURED', count: null },
     // RBAC
     { name: 'roles', module: 'RBAC', status: 'NOT CONFIGURED', count: null },
     { name: 'permissions', module: 'RBAC', status: 'NOT CONFIGURED', count: null },
     { name: 'role_permissions', module: 'RBAC', status: 'NOT CONFIGURED', count: null },
     { name: 'user_role_assignments', module: 'RBAC', status: 'NOT CONFIGURED', count: null },
-    { name: 'admin_users', module: 'RBAC', status: 'NOT CONFIGURED', count: null },
     // CMS
+    { name: 'tickets', module: 'CMS', status: 'NOT CONFIGURED', count: null },
+    { name: 'ticket_messages', module: 'CMS', status: 'NOT CONFIGURED', count: null },
+    { name: 'contact_requests', module: 'CMS', status: 'NOT CONFIGURED', count: null },
+    { name: 'blog_categories', module: 'CMS', status: 'NOT CONFIGURED', count: null },
+    { name: 'blogs', module: 'CMS', status: 'NOT CONFIGURED', count: null },
     { name: 'cms_pages', module: 'CMS', status: 'NOT CONFIGURED', count: null },
     { name: 'cms_page_versions', module: 'CMS', status: 'NOT CONFIGURED', count: null },
     { name: 'faqs', module: 'CMS', status: 'NOT CONFIGURED', count: null },
     { name: 'announcements', module: 'CMS', status: 'NOT CONFIGURED', count: null },
+    { name: 'banners', module: 'CMS', status: 'NOT CONFIGURED', count: null },
+    { name: 'reviews', module: 'CMS', status: 'NOT CONFIGURED', count: null },
+    { name: 'rating_summaries', module: 'CMS', status: 'NOT CONFIGURED', count: null },
     // Audit
+    { name: 'api_keys', module: 'Audit', status: 'NOT CONFIGURED', count: null },
+    { name: 'system_configuration', module: 'Audit', status: 'NOT CONFIGURED', count: null },
     { name: 'audit_logs', module: 'Audit', status: 'NOT CONFIGURED', count: null },
-    { name: 'system_activity_logs', module: 'Audit', status: 'NOT CONFIGURED', count: null }
+    { name: 'system_activity_logs', module: 'Audit', status: 'NOT CONFIGURED', count: null },
+    { name: 'file_storage_index', module: 'Audit', status: 'NOT CONFIGURED', count: null }
   ]);
   const [testingSupabase, setTestingSupabase] = React.useState<boolean>(false);
   const [supabaseTestLogs, setSupabaseTestLogs] = React.useState<string[]>([]);
@@ -2631,101 +2605,7 @@ export default function TestingCenter({
                 </div>
                 <button 
                   onClick={() => {
-                    const sqlScript = `CREATE TABLE clinics (
-  id TEXT PRIMARY KEY,
-  name TEXT NOT NULL,
-  address TEXT NOT NULL,
-  city TEXT NOT NULL,
-  state TEXT NOT NULL,
-  pincode TEXT NOT NULL,
-  phone TEXT NOT NULL,
-  partner_email TEXT NOT NULL,
-  verified BOOLEAN DEFAULT FALSE,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE TABLE doctors (
-  id TEXT PRIMARY KEY,
-  name TEXT NOT NULL,
-  specialty TEXT NOT NULL,
-  experience INT NOT NULL,
-  rating NUMERIC(3,2) DEFAULT 5.0,
-  consultation_fee NUMERIC(10,2) NOT NULL,
-  video_fee NUMERIC(10,2) NOT NULL,
-  clinic_address TEXT,
-  photo TEXT,
-  mci_registration TEXT UNIQUE,
-  email TEXT UNIQUE NOT NULL,
-  phone TEXT,
-  approved BOOLEAN DEFAULT FALSE,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE TABLE appointments (
-  id TEXT PRIMARY KEY,
-  doctor_id TEXT REFERENCES doctors(id),
-  doctor_name TEXT NOT NULL,
-  doctor_specialty TEXT NOT NULL,
-  doctor_photo TEXT,
-  patient_id TEXT NOT NULL,
-  patient_name TEXT NOT NULL,
-  patient_age INT NOT NULL,
-  patient_gender TEXT NOT NULL,
-  date DATE NOT NULL,
-  time TEXT NOT NULL,
-  type TEXT CHECK (type IN ('In-Clinic', 'Video')),
-  status TEXT DEFAULT 'Pending' CHECK (status IN ('Pending', 'Confirmed', 'Completed', 'Cancelled', 'Expired')),
-  reason TEXT NOT NULL,
-  fee NUMERIC(10,2) NOT NULL,
-  clinic_name TEXT,
-  clinic_address TEXT,
-  serial_no INT,
-  room_id TEXT,
-  payment_method TEXT NOT NULL,
-  payment_status TEXT NOT NULL,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE TABLE patient_wallets (
-  patient_email TEXT PRIMARY KEY,
-  patient_name TEXT NOT NULL,
-  balance NUMERIC(12,2) DEFAULT 0.00 CHECK (balance >= 0),
-  referral_earnings NUMERIC(12,2) DEFAULT 0.00 CHECK (referral_earnings >= 0),
-  refund_earnings NUMERIC(12,2) DEFAULT 0.00 CHECK (refund_earnings >= 0),
-  referral_code TEXT UNIQUE NOT NULL,
-  referred_by_code TEXT REFERENCES patient_wallets(referral_code) ON DELETE SET NULL,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE TABLE wallet_transactions (
-  id TEXT PRIMARY KEY,
-  patient_email TEXT REFERENCES patient_wallets(patient_email) ON DELETE CASCADE,
-  timestamp TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-  type TEXT CHECK (type IN ('Credit', 'Debit')),
-  amount NUMERIC(12,2) NOT NULL,
-  source TEXT CHECK (source IN ('Referral', 'Platform Refund', 'Manual Admin Credit', 'Manual Admin Debit', 'Platform Fee Payment')),
-  description TEXT NOT NULL,
-  status TEXT DEFAULT 'Completed' CHECK (status IN ('Approved', 'Suspended', 'Cancelled', 'Completed'))
-);
-
-CREATE TABLE profiles (
-  id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
-  email TEXT UNIQUE NOT NULL,
-  role TEXT NOT NULL DEFAULT 'patient',
-  partner_type TEXT,
-  name TEXT,
-  full_name TEXT,
-  terms_accepted BOOLEAN DEFAULT FALSE,
-  accepted_terms_version TEXT,
-  accepted_terms_at TIMESTAMP WITH TIME ZONE,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-);
-
-ALTER TABLE patient_wallets ENABLE ROW LEVEL SECURITY;
-ALTER TABLE wallet_transactions ENABLE ROW LEVEL SECURITY;
-ALTER TABLE appointments ENABLE ROW LEVEL SECURITY;
-ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;`;
-                    navigator.clipboard.writeText(sqlScript);
+                    navigator.clipboard.writeText(supabaseMigrationSql);
                     setCopiedSQL(true);
                     setTimeout(() => setCopiedSQL(false), 2000);
                   }}
@@ -2738,63 +2618,7 @@ ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;`;
               <div className="bg-slate-900 rounded-2xl p-4 font-mono text-[10px] text-slate-300 h-64 overflow-y-auto leading-relaxed border border-slate-800 scrollbar-thin">
                 <span className="text-slate-500">-- Click "Copy Schema SQL" at top right, then execute inside your Supabase dashboard SQL editor.</span>
                 <pre className="mt-2 text-indigo-300">
-{`-- 1. CLINICS TABLE
-CREATE TABLE clinics (
-  id TEXT PRIMARY KEY,
-  name TEXT NOT NULL,
-  address TEXT NOT NULL,
-  city TEXT NOT NULL,
-  state TEXT NOT NULL,
-  pincode TEXT NOT NULL,
-  phone TEXT NOT NULL,
-  partner_email TEXT NOT NULL,
-  verified BOOLEAN DEFAULT FALSE,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-);
-
--- 2. DOCTORS TABLE
-CREATE TABLE doctors (
-  id TEXT PRIMARY KEY,
-  name TEXT NOT NULL,
-  specialty TEXT NOT NULL,
-  experience INT NOT NULL,
-  rating NUMERIC(3,2) DEFAULT 5.0,
-  consultation_fee NUMERIC(10,2) NOT NULL,
-  video_fee NUMERIC(10,2) NOT NULL,
-  clinic_address TEXT,
-  photo TEXT,
-  mci_registration TEXT UNIQUE,
-  email TEXT UNIQUE NOT NULL,
-  phone TEXT,
-  approved BOOLEAN DEFAULT FALSE,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-);
-
--- 3. APPOINTMENTS TABLE
-CREATE TABLE appointments (
-  id TEXT PRIMARY KEY,
-  doctor_id TEXT REFERENCES doctors(id),
-  doctor_name TEXT NOT NULL,
-  doctor_specialty TEXT NOT NULL,
-  doctor_photo TEXT,
-  patient_id TEXT NOT NULL,
-  patient_name TEXT NOT NULL,
-  patient_age INT NOT NULL,
-  patient_gender TEXT NOT NULL,
-  date DATE NOT NULL,
-  time TEXT NOT NULL,
-  type TEXT CHECK (type IN ('In-Clinic', 'Video')),
-  status TEXT DEFAULT 'Pending' CHECK (status IN ('Pending', 'Confirmed', 'Completed', 'Cancelled', 'Expired')),
-  reason TEXT NOT NULL,
-  fee NUMERIC(10,2) NOT NULL,
-  clinic_name TEXT,
-  clinic_address TEXT,
-  serial_no INT,
-  room_id TEXT,
-  payment_method TEXT NOT NULL,
-  payment_status TEXT NOT NULL,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-);`}
+{supabaseMigrationSql}
                 </pre>
               </div>
             </div>
